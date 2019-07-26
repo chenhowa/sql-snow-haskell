@@ -39,7 +39,7 @@ data Token
     | And 
     | Or 
     | As 
-    | Identifier String 
+    | Identifier IdentifierType 
     | RightParen 
     | LeftParen 
     | Comma 
@@ -57,3 +57,7 @@ data BooleanType
     = True 
     | False 
     | Null
+
+data IdentifierType 
+    = Simple String
+    | Dotwalk String

@@ -51,53 +51,63 @@ import Lexer.Tokens as T
     and                         { T.And }
     or                          { T.Or }
     as                          { T.As }
-    identifier                  { T.Identifier $$ }
-    constant                    { T.Constant $$ }
+    identifier                  { T.Identifier ( Simple $$ ) }
     '('                         { T.RightParen }
     ')'                         { T.LeftParen }
     ','                         { T.Comma }
     lc                          { T.LineComment $$ }
     bc                          { T.BlockComment $$ }
+    dotwalk                     { T.Identifier (Dotwalk $$) }
+    integer                     { T.Constant (T.Integer $$) }
+    float                       { T.Constant (T.Float $$) }
+    string                      { T.Constant (T.String $$) }
+    true                        { T.Constant (T.Boolean T.True) }
+    false                       { T.Constant (T.Boolean T.False) }
+    null                        { T.Constant (T.Boolean T.Null ) }
+
+
 
 
 %%
 
-Query           : Select                        { QuerySelect $1 }
+-- Primitives
+Null            :: { PrimitiveType }                  
+                : null                          { (S.Boolean S.Null) }
 
-Select          :: { Select }
-                : select '*'                    { Select Wildcard }
-                | select Columns                { Select (Columns $2) }
+True            :: { Primitive }                  
+                : true                          { (S.Boolean S.True) }
 
-Columns         :: { Columns }
-                : Column                        { [$1] }
-                | Columns ',' Column            { $2 : $1 }
+False           :: { Primitive }                   
+                : false                         { (S.Boolean S.Null) }
 
-Column          :: { Column }
-                : identifier                    { Column (Identifier $1) Nothing}
-                | identifier Alias              { Column (Identifier $1) $2 }
-                | Expr Alias                    { Column (Expr $1) $2 }
+String          :: { Primitive }        
+                : string                        { (S.String $1) }
 
-Alias           :: { Alias }
-                : identifier                    { Just $1 }
-                | as identifier                 { Just $2 }
+Number          :: { Primitive }                           
+                : integer                       { (S.Number $1) } -- for now we will keep numbers as a string
+                | float                         { (S.Number $1) } -- for now we will keep numbers as a string
 
+Primitive       :: { PrimitiveType }
+                : Null                          { $1 }
+                | True                          { $1 }
+                | False                         { $1 }
+                | String                        { $1 }
+                | Number                        { $1 }
+
+
+-- Expressions -- Things that evaluate to a value    
 Expr            :: { Expr }
-                : Function                      { Expr $1 }
-                | constant                      { Expr (Constant $1) }
-                | BinaryOp                      { Expr $1 }
-                
-Function        :: { Fn }
-                : identifier '(' Args ')'       { Function (Identifier $1) $3 }
+                : '(' Expr ')'                  { $1 }
+                : Primitive                     { Constant $1 }
+                | identifier '(' Args ')'       { Function $1 $3 }
+                | BinaryOp                      { Operator (Binary $1) }
+                | UnaryOp                       { Operator (Unary $1)}
 
 Args            :: { Args }
-                : Arg                           { Arg [$1] }
-                | Args ',' Arg                  { $2:$1 }
+                : Expr                          { [ $1 ] }
+                | Args ',' Expr                 { ($2 : $1) }
 
-Arg             :: { Arg }
-                : identifier                    { Identifier $1 }
-                | Expr                          { $1 }
-
-BinaryOp        :: { Fn }
+BinaryOp        :: { BinaryOp }
                 : Expr '+' Expr                 { Plus $1 $3 }
                 | Expr '-' Expr                 { Minus $1 $3 }
                 | Expr '*' Expr                 { Multiply $1 $3 }
@@ -112,10 +122,34 @@ BinaryOp        :: { Fn }
                 | Expr and Expr                 { And $1 $3 }
                 | Expr or Expr                  { Or $1 $3 }
 
-UnaryOp         :: { Fn }
+UnaryOp         :: { UnaryOp }
                 : not Expr                      { Not $2 }
+                : '-' Expr                      { Neg $2 }
+
+-- SELECT Clause
+Select          :: { Select }
+                : select '*'                    { Select Wildcard }
+                | select Columns                { Select (Columns $2) }  -- a list of Column
+
+Columns         :: { [ Column ] }
+                : Column                        { [$1] }      -- a list of a single Column
+                | Columns ',' Column            { $2 : $1 }   -- a list of Columns
+
+Column          :: { Column }
+                : Name                          { Column $1 Nothing}
+                | Name Alias                    { Column $1 $2 }
+                | Expr Alias                    { Value $1 $2 }
+
+Name            :: { String }
+                : identifier                    { $1 }
+                | dotwalk                       { $1 }
+
+Alias           :: { Alias }                    -- Maybe String
+                : identifier                    { Just $1 }
+                | as identifier                 { Just $2 }
 
 
+-- FROM Clause 
 From            : from Tables                   { From $2 }
 
 Tables          : Table                         { [$1] }

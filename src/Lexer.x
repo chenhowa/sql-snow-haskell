@@ -68,9 +68,10 @@ tokens :-
     AND | and                                       { \s -> And }
     OR | or                                         { \s -> Or }
     AS | as                                         { \s -> As }
-    @identifier                                     { \s -> Identifier s }
-    @linecomment                                    { \s -> LineComment $ removeFirstLast s }
-    @blockcomment                                   { \s -> BlockComment $ removeFirstLast s }
+    @identifier                                     { \s -> Identifier (Simple s) }
+    @dotwalk                                        { \s -> Identifier (Dotwalk s) }
+    @linecomment                                    { \s -> LineComment $ s }
+    @blockcomment                                   { \s -> BlockComment $ s }
     @integer                                        { \s -> Constant $ T.Integer s }
     @float                                          { \s -> Constant $ T.Float s }
     @string                                         { \s -> Constant $ T.String (removeFirstLast s) }

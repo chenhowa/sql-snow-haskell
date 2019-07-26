@@ -1,48 +1,72 @@
 module Parser.Syntax where 
 
+{- PRIMITIVES -}
+data Primitive 
+    = Primitive PrimitiveType
 
-type Syntax = Int
+data PrimitiveType
+    = Boolean BooleanType
+    | Number String -- Is this right? I don't suppose SQL really distinguishes between ints and floats
+    | String String
 
+data BooleanType
+    = True
+    | False
+    | Null
+
+{- SELECT Clause -}
 data Select
-    = Select Columns
+    = Select SelectType
 
-data Columns 
+data SelectType 
     = Wildcard
     | Columns [ Column ]
 
 data Column 
-    = Column Expr Alias
+    = Column String Alias
+    | Value Expr Alias
 
 type Alias = Maybe String
 
+{- EXPRESSIONS -}
 -- An Expr is something that can be evaluated down to a concrete value
 data Expr 
     = Identifier ID
-    | Constant String 
-    | Function Fn [ Args ]
+    | Constant PrimitiveType 
+    | Function ID [ Args ]
+    | Operator OperatorType
 
+type Args = [ Expr ]
 type ID = String
-type Op1 = Expr
-type Op2 = Expr
 
-data Fn 
-    = Named ID [ Expr ]
-    | Plus Op1 Op2 
-    | Minus Op1 Op2 
-    | FloatDivide Op1 Op2 
-    | Multiply Op1 Op2
-    | Modulo Op1 Op2 
-    | Equals Op1 Op2
-    | NotEquals Op1 Op2 
-    | LT Op1 Op2 
-    | LTE Op1 Op2 
-    | GT Op1 Op2 
-    | GTE Op1 Op2
-    | And Op1 Op2 
-    | Or Op1 Op2 
-    | Not Op1
+data OperatorType
+    = Binary BinaryOp
+    | Unary UnaryOp
 
-type Args = [ Arg ]
+data BinaryOp
+    | Plus Op Op 
+    | Minus Op Op 
+    | FloatDivide Op Op 
+    | Multiply Op Op
+    | Modulo Op Op 
+    | Equals Op Op
+    | NotEquals Op Op 
+    | LT Op Op 
+    | LTE Op Op 
+    | GT Op Op
+    | GTE Op Op
+    | And Op Op
+    | Or Op Op
 
-data Arg 
-    = Arg Expr
+data UnaryOp
+    | Not Op
+    | Neg Op
+
+type Op = Expr
+
+{- FROM Clause -}
+data From  
+    = From [ Table ]
+
+data Table 
+    = 
