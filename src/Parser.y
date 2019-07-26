@@ -3,6 +3,10 @@ module Parser
     ( parse
 
     ) where
+
+import Parser.Syntax
+import Lexer.Tokens
+
 }
 
 %name parse
@@ -60,30 +64,57 @@ module Parser
 Query           : Select
                 | 
 
-Select          : select '*'                    { Select Wildcard }
+Select          :: { Select }
+                : select '*'                    { Select Wildcard }
                 | select Columns                { Select (Columns $2) }
 
-Columns         : Column                        { [$1] }
+Columns         :: { Columns }
+                : Column                        { [$1] }
                 | Columns ',' Column            { $2 : $1 }
 
-Column          : identifier                    { Column (Identifier $1) Nothing}
+Column          :: { Column }
+                : identifier                    { Column (Identifier $1) Nothing}
                 | identifier Alias              { Column (Identifier $1) $2 }
                 | Expr Alias                    { Column (Expr $1) $2 }
 
-Alias           : identifier                    { Just $1 }
+Alias           :: { Alias }
+                : identifier                    { Just $1 }
                 | as identifier                 { Just $2 }
 
-Expr            : Function                      { Expr $1 }
-                | constant                      { Constant $1 }
+Expr            :: { Expr }
+                : Function                      { Expr $1 }
+                | constant                      { Expr (Constant $1) }
+                | BinaryOp                      { Expr $1 }
                 
+Function        :: { Fn }
+                : identifier '(' Args ')'       { Function (Identifier $1) $3 }
 
-Function        : identifier '(' Args ')'       { Function $1 $3 }
+Args            :: { Args }
+                : Arg                           { Arg [$1] }
+                | Args ',' Arg                  { $2:$1 }
 
-Args            : Arg                           { Arg [$1] }
-                | Args ',' Arg                  { Args ($2:$1) }
-
-Arg             : identifier                    { Identifier $1 }
+Arg             :: { Arg }
+                : identifier                    { Identifier $1 }
                 | Expr                          { $1 }
+
+BinaryOp        :: { Fn }
+                : Expr '+' Expr                 { Plus $1 $3 }
+                | Expr '-' Expr                 { Minus $1 $3 }
+                | Expr '*' Expr                 { Multiply $1 $3 }
+                | Expr '/' Expr                 { FloatDivide $1 $3 }
+                | Expr '%' Expr                 { Modulo $1 $3 }
+                | Expr '=' Expr                 { Equals $1 $3 }
+                | Expr '!=' Expr                { NotEquals $1 $3 }
+                | Expr '<' Expr                 { LT $1 $3 }
+                | Expr '<=' Expr                { LTE $1 $3 }
+                | Expr '>' Expr                 { GT $1 $3 }
+                | Expr '>=' Expr                { GTE $1 $3 }
+                | Expr and Expr                 { And $1 $3 }
+                | Expr or Expr                  { Or $1 $3 }
+
+UnaryOp         :: { Fn }
+                : not Expr                      { Not $2 }
+
 
 From            : from Tables                   { From $2 }
 
@@ -93,7 +124,7 @@ Tables          : Table                         { [$1] }
 Table           : identifier                    { Table $1 Nothing }
                 | identifier Alias              { Table $1 $2 }
 
-Where           : where
+Where           : where                     
 
 
 
