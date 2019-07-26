@@ -4,8 +4,8 @@ module Lexer
         
     ) where
 
-import Lexer.Token
-import Lexer.Token as T
+import Lexer.Tokens
+import Lexer.Tokens as T
 }
 
 %wrapper "basic"
@@ -57,8 +57,8 @@ tokens :-
     UNION | union                                   { \s -> Union }
     INTERSECT | intersect                           { \s -> Intersect }
     ALL | all                                       { \s -> All }
-    LEFT | left                                     { \s -> Left }
-    RIGHT | right                                   { \s -> Right }
+    LEFT | left                                     { \s -> T.Left }
+    RIGHT | right                                   { \s -> T.Right }
     INNER | inner                                   { \s -> Inner }
     OUTER | outer                                   { \s -> Outer }
     NATURAL | natural                               { \s -> Natural }

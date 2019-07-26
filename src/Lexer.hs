@@ -7,8 +7,8 @@ module Lexer
         
     ) where
 
-import Lexer.Token
-import Lexer.Token as T
+import Lexer.Tokens
+import Lexer.Tokens as T
 
 #if __GLASGOW_HASKELL__ >= 603
 #include "ghcconfig.h"
@@ -8568,8 +8568,8 @@ alex_action_25 =  \s -> Descending
 alex_action_26 =  \s -> Union 
 alex_action_27 =  \s -> Intersect 
 alex_action_28 =  \s -> All 
-alex_action_29 =  \s -> Left 
-alex_action_30 =  \s -> Right 
+alex_action_29 =  \s -> T.Left 
+alex_action_30 =  \s -> T.Right 
 alex_action_31 =  \s -> Inner 
 alex_action_32 =  \s -> Outer 
 alex_action_33 =  \s -> Natural 

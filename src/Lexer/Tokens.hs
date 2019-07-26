@@ -1,5 +1,7 @@
 module Lexer.Tokens where 
 
+import Prelude hiding (Right, Left)
+
 data Token
     = Select
     | From
@@ -38,21 +40,20 @@ data Token
     | Or 
     | As 
     | Identifier String 
-    | Constant String 
     | RightParen 
     | LeftParen 
     | Comma 
     | LineComment String
     | BlockComment String
-    | Constant Constant
+    | Constant ConstantType
 
-data Constant 
+data ConstantType 
     = Integer String
     | Float String 
     | String String 
-    | Boolean Bool
+    | Boolean BooleanType
 
-data Bool 
+data BooleanType
     = True 
     | False 
     | Null
