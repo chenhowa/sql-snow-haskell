@@ -6,58 +6,58 @@ module Parser
 
 import Parser.Syntax
 import Parser.Syntax as S
-import Lexer.Tokens
+import Lexer.Tokens as T
 
 }
 
 %name parse
-%tokentype { Token }
+%tokentype { T.Token }
 %error { parseError }
 
 %token
-    select                      { TokenSelect }
-    from                        { TokenFrom }
-    where                       { TokenWhere }
-    groupBy                     { TokenGroupBy }
-    having                      { TokenHaving }
-    in                          { TokenIn }
-    distinct                    { TokenDistinct }
-    limit                       { TokenLimit }
-    orderBy                     { TokenOrderBy }
-    asc                         { TokenAscending }
-    desc                        { TokenDescending }
-    union                       { TokenUnion }
-    intersect                   { TokenIntersect }
-    all                         { TokenAll }
-    left                        { TokenLeft }
-    right                       { TokenRight }
-    inner                       { TokenInner }
-    outer                       { TokenOuter }
-    natural                     { TokenNatural }
-    join                        { TokenJoin }
-    on                          { TokenOn }
-    '+'                         { TokenPlus }
-    '-'                         { TokenMinus }
-    '*'                         { TokenAsterisk }
-    '/'                         { TokenFloatDivide }
-    '%'                         { TokenModulo }
-    '='                         { TokenEquals }
-    '!='                        { TokenNotEquals }
-    '<'                         { TokenLT }
-    '<='                        { TokenLTE }
-    '>'                         { TokenGT }
-    '>='                        { TokenGTE }
-    not                         { TokenNot }
-    and                         { TokenAnd }
-    or                          { TokenOr }
-    as                          { TokenAs }
-    identifier                  { TokenIdentifier $$ }
-    constant                    { TokenConstant $$ }
-    '('                         { TokenRightParen }
-    ')'                         { TokenLeftParen }
-    ','                         { TokenComma }
-    lc                          { TokenLineComment $$ }
-    bc                          { TokenBlockComment $$ }
+    select                      { T.Select }
+    from                        { T.From }
+    where                       { T.Where }
+    groupBy                     { T.GroupBy }
+    having                      { T.Having }
+    in                          { T.In }
+    distinct                    { T.Distinct }
+    limit                       { T.Limit }
+    orderBy                     { T.OrderBy }
+    asc                         { T.Ascending }
+    desc                        { T.Descending }
+    union                       { T.Union }
+    intersect                   { T.Intersect }
+    all                         { T.All }
+    left                        { T.Left }
+    right                       { T.Right }
+    inner                       { T.Inner }
+    outer                       { T.Outer }
+    natural                     { T.Natural }
+    join                        { T.Join }
+    on                          { T.On }
+    '+'                         { T.Plus }
+    '-'                         { T.Minus }
+    '*'                         { T.Asterisk }
+    '/'                         { T.FloatDivide }
+    '%'                         { T.Modulo }
+    '='                         { T.Equals }
+    '!='                        { T.NotEquals }
+    '<'                         { T.LT }
+    '<='                        { T.LTE }
+    '>'                         { T.GT }
+    '>='                        { T.GTE }
+    not                         { T.Not }
+    and                         { T.And }
+    or                          { T.Or }
+    as                          { T.As }
+    identifier                  { T.Identifier $$ }
+    constant                    { T.Constant $$ }
+    '('                         { T.RightParen }
+    ')'                         { T.LeftParen }
+    ','                         { T.Comma }
+    lc                          { T.LineComment $$ }
+    bc                          { T.BlockComment $$ }
 
 
 %%

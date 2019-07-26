@@ -1,46 +1,58 @@
 module Lexer.Tokens where 
 
 data Token
-    = TokenSelect
-    | TokenFrom
-    | TokenWhere 
-    | TokenGroupBy
-    | TokenHaving
-    | TokenIn 
-    | TokenDistinct 
-    | TokenLimit 
-    | TokenOrderBy
-    | TokenAscending 
-    | TokenDescending 
-    | TokenUnion 
-    | TokenIntersect 
-    | TokenAll 
-    | TokenLeft 
-    | TokenRight 
-    | TokenInner 
-    | TokenOuter 
-    | TokenNatural 
-    | TokenJoin 
-    | TokenOn 
-    | TokenPlus 
-    | TokenMinus 
-    | TokenAsterisk 
-    | TokenFloatDivide 
-    | TokenModulo 
-    | TokenEquals 
-    | TokenNotEquals 
-    | TokenLT 
-    | TokenLTE 
-    | TokenGT 
-    | TokenGTE 
-    | TokenNot 
-    | TokenAnd 
-    | TokenOr 
-    | TokenAs 
-    | TokenIdentifier String 
-    | TokenConstant String 
-    | TokenRightParen 
-    | TokenLeftParen 
-    | TokenComma 
-    | TokenLineComment String
-    | TokenBlockComment String
+    = Select
+    | From
+    | Where 
+    | GroupBy
+    | Having
+    | In 
+    | Distinct 
+    | Limit 
+    | OrderBy
+    | Ascending 
+    | Descending 
+    | Union 
+    | Intersect 
+    | All 
+    | Left 
+    | Right 
+    | Inner 
+    | Outer 
+    | Natural 
+    | Join 
+    | On 
+    | Plus 
+    | Minus 
+    | Asterisk 
+    | FloatDivide 
+    | Modulo 
+    | Equals 
+    | NotEquals 
+    | LT 
+    | LTE 
+    | GT 
+    | GTE 
+    | Not 
+    | And 
+    | Or 
+    | As 
+    | Identifier String 
+    | Constant String 
+    | RightParen 
+    | LeftParen 
+    | Comma 
+    | LineComment String
+    | BlockComment String
+    | Constant Constant
+
+data Constant 
+    = Integer String
+    | Float String 
+    | String String 
+    | Boolean Bool
+
+data Bool 
+    = True 
+    | False 
+    | Null
