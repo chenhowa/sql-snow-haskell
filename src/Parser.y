@@ -5,6 +5,7 @@ module Parser
     ) where
 
 import Parser.Syntax
+import Parser.Syntax as S
 import Lexer.Tokens
 
 }
@@ -55,14 +56,13 @@ import Lexer.Tokens
     '('                         { TokenRightParen }
     ')'                         { TokenLeftParen }
     ','                         { TokenComma }
-    lc                          { TokenLineComment }
-    bc                          { TokenBlockComment }
+    lc                          { TokenLineComment $$ }
+    bc                          { TokenBlockComment $$ }
 
 
 %%
 
-Query           : Select
-                | 
+Query           : Select                        { QuerySelect $1 }
 
 Select          :: { Select }
                 : select '*'                    { Select Wildcard }
@@ -105,10 +105,10 @@ BinaryOp        :: { Fn }
                 | Expr '%' Expr                 { Modulo $1 $3 }
                 | Expr '=' Expr                 { Equals $1 $3 }
                 | Expr '!=' Expr                { NotEquals $1 $3 }
-                | Expr '<' Expr                 { LT $1 $3 }
-                | Expr '<=' Expr                { LTE $1 $3 }
-                | Expr '>' Expr                 { GT $1 $3 }
-                | Expr '>=' Expr                { GTE $1 $3 }
+                | Expr '<' Expr                 { S.LT $1 $3 }
+                | Expr '<=' Expr                { S.LTE $1 $3 }
+                | Expr '>' Expr                 { S.GT $1 $3 }
+                | Expr '>=' Expr                { S.GTE $1 $3 }
                 | Expr and Expr                 { And $1 $3 }
                 | Expr or Expr                  { Or $1 $3 }
 
@@ -124,7 +124,6 @@ Tables          : Table                         { [$1] }
 Table           : identifier                    { Table $1 Nothing }
                 | identifier Alias              { Table $1 $2 }
 
-Where           : where                     
 
 
 
