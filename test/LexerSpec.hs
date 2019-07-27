@@ -128,15 +128,26 @@ spec = do
         it "block comment" $ do 
             L.alexScanTokens "/* I am block */" `shouldBe` [BlockComment " I am block "]
         describe "constant" $ do 
-            it "true" $ do 
-                L.alexScanTokens "TRUE" `shouldBe` [Constant $ Boolean TrueVal]
-                L.alexScanTokens "true" `shouldBe` [Constant $ Boolean TrueVal]
-            it "false" $ do 
-                L.alexScanTokens "FALSE" `shouldBe` [Constant $ Boolean FalseVal]
-                L.alexScanTokens "false" `shouldBe` [Constant $ Boolean FalseVal]
-            it "null" $ do 
-                L.alexScanTokens "NULL" `shouldBe` [Constant $ Boolean Null]
-                L.alexScanTokens "null" `shouldBe` [Constant $ Boolean Null]
+            describe "boolean" $ do 
+                it "true" $ do 
+                    L.alexScanTokens "TRUE" `shouldBe` [Constant $ Boolean TrueVal]
+                    L.alexScanTokens "true" `shouldBe` [Constant $ Boolean TrueVal]
+                it "false" $ do 
+                    L.alexScanTokens "FALSE" `shouldBe` [Constant $ Boolean FalseVal]
+                    L.alexScanTokens "false" `shouldBe` [Constant $ Boolean FalseVal]
+                it "null" $ do 
+                    L.alexScanTokens "NULL" `shouldBe` [Constant $ Boolean Null]
+                    L.alexScanTokens "null" `shouldBe` [Constant $ Boolean Null]
+            it "string" $ do 
+                L.alexScanTokens "\"What\"" `shouldBe` [Constant $ String "What"]
+                L.alexScanTokens "\'What\'" `shouldBe` [Constant $ String "What"]
+            it "integer" $ do 
+                L.alexScanTokens "1234" `shouldBe` [Constant $ Integer "1234" ]
+                L.alexScanTokens "0034" `shouldBe` [Constant $ Integer "0034" ]
+            it "float" $ do
+                L.alexScanTokens "1234.6" `shouldBe` [Constant $ Float "1234.6" ]
+                L.alexScanTokens "0034.00700" `shouldBe` [Constant $ Float "0034.00700" ]
+
     it "validate maximum munch" $ do 
         L.alexScanTokens "descending" `shouldBe` [ Identifier "descending" ]
     it "whitespace is ignored" $ do 
