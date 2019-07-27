@@ -10,8 +10,8 @@ data PrimitiveType
     | String String
 
 data BooleanType
-    = True
-    | False
+    = TrueVal
+    | FalseVal
     | Null
 
 {- SELECT Clause -}
@@ -33,7 +33,7 @@ type Alias = Maybe String
 data Expr 
     = Identifier ID
     | Constant PrimitiveType 
-    | Function ID [ Args ]
+    | Function ID Args
     | Operator OperatorType
 
 type Args = [ Expr ]
@@ -44,7 +44,7 @@ data OperatorType
     | Unary UnaryOp
 
 data BinaryOp
-    | Plus Op Op 
+    = Plus Op Op 
     | Minus Op Op 
     | FloatDivide Op Op 
     | Multiply Op Op
@@ -59,7 +59,7 @@ data BinaryOp
     | Or Op Op
 
 data UnaryOp
-    | Not Op
+    = Not Op
     | Neg Op
 
 type Op = Expr
@@ -69,4 +69,4 @@ data From
     = From [ Table ]
 
 data Table 
-    = 
+    = Table String Alias

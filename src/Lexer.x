@@ -4,7 +4,6 @@ module Lexer
         
     ) where
 
-import Lexer.Tokens
 import Lexer.Tokens as T
 }
 
@@ -13,13 +12,12 @@ import Lexer.Tokens as T
 
 $digit              = 0-9
 $alpha              = [a-zA-Z]
-$alphanum           = [$digit$alpha]
+$alphanum           = [a-zA-Z0-9]
 $underscore         = _
-$idchar             = [$underscore$alphanum]
+$idchar             = [a-zA-Z0-9_]
 
-@identifier         = $alpha (idchar)*
-@dotwalk            = @identifier (\. @identifier)+
-@linecomment        = "--" ($white # [\n])* [\n]
+@ident              = $alpha ($idchar)*
+@dotwalk            = @ident (\. @ident)+
 @blockcomment       = "/*" .* "*/"
 
 @integer            = $digit+
@@ -29,57 +27,57 @@ $idchar             = [$underscore$alphanum]
 tokens :-
 
     $white+                                         ;
-    "+"                                             { \s -> Plus }
-    "-"                                             { \s -> Minus }
-    "*"                                             { \s -> Asterisk }
-    "/"                                             { \s -> FloatDivide }
-    "%"                                             { \s -> Modulo }
+    "+"                                             { \s -> T.Plus }
+    "-"                                             { \s -> T.Minus }
+    "*"                                             { \s -> T.Asterisk }
+    "/"                                             { \s -> T.FloatDivide }
+    "%"                                             { \s -> T.Modulo }
     "<"                                             { \s -> T.LT }
     "<="                                            { \s -> T.LTE }
     ">"                                             { \s -> T.GT }
     ">="                                            { \s -> T.GTE }
-    "="                                             { \s -> Equals }
-    "!="                                            { \s -> NotEquals }
-    ","                                             { \s -> Comma } 
-    "("                                             { \s -> RightParen }
-    ")"                                             { \s -> LeftParen }
-    SELECT | select                                 { \s -> Select }
-    FROM | from                                     { \s -> From }
-    WHERE | where                                   { \s -> Where }
-    "GROUP BY" | "group by"                         { \s -> GroupBy }
-    HAVING | having                                 { \s -> Having }
-    IN | in                                         { \s -> In }
-    DISTINCT | distinct                             { \s -> Distinct }
-    LIMIT | limit                                   { \s -> Limit }
-    "ORDER BY" | "order by"                         { \s -> OrderBy }
-    ASC | asc                                       { \s -> Ascending }
-    DESC | desc                                     { \s -> Descending }
-    UNION | union                                   { \s -> Union }
-    INTERSECT | intersect                           { \s -> Intersect }
-    ALL | all                                       { \s -> All }
+    "="                                             { \s -> T.Equals }
+    "!="                                            { \s -> T.NotEquals }
+    ","                                             { \s -> T.Comma } 
+    "("                                             { \s -> T.LeftParen }
+    ")"                                             { \s -> T.RightParen }
+    SELECT | select                                 { \s -> T.Select }
+    FROM | from                                     { \s -> T.From }
+    WHERE | where                                   { \s -> T.Where }
+    "GROUP" $white+ "BY" | "group" $white+ "by"     { \s -> T.GroupBy }
+    HAVING | having                                 { \s -> T.Having }
+    IN | in                                         { \s -> T.In }
+    DISTINCT | distinct                             { \s -> T.Distinct }
+    LIMIT | limit                                   { \s -> T.Limit }
+    "ORDER" $white+ "BY" | "order" $white+ "by"     { \s -> T.OrderBy }
+    ASC | asc                                       { \s -> T.Ascending }
+    DESC | desc                                     { \s -> T.Descending }
+    UNION | union                                   { \s -> T.Union }
+    INTERSECT | intersect                           { \s -> T.Intersect }
+    ALL | all                                       { \s -> T.All }
     LEFT | left                                     { \s -> T.Left }
     RIGHT | right                                   { \s -> T.Right }
-    INNER | inner                                   { \s -> Inner }
-    OUTER | outer                                   { \s -> Outer }
-    NATURAL | natural                               { \s -> Natural }
-    JOIN | join                                     { \s -> Join }
-    ON | on                                         { \s -> On }
-    NOT | not                                       { \s -> Not }
-    AND | and                                       { \s -> And }
-    OR | or                                         { \s -> Or }
-    AS | as                                         { \s -> As }
-    @identifier                                     { \s -> Identifier (Simple s) }
-    @dotwalk                                        { \s -> Identifier (Dotwalk s) }
-    @linecomment                                    { \s -> LineComment $ s }
-    @blockcomment                                   { \s -> BlockComment $ s }
-    @integer                                        { \s -> Constant $ T.Integer s }
-    @float                                          { \s -> Constant $ T.Float s }
-    @string                                         { \s -> Constant $ T.String (removeFirstLast s) }
-    TRUE | true                                     { \s -> Constant $ T.Boolean T.True }
-    FALSE | false                                   { \s -> Constant $ T.Boolean T.False  }
-    NULL | null                                     { \s -> Constant $ T.Boolean T.Null  }
+    INNER | inner                                   { \s -> T.Inner }
+    OUTER | outer                                   { \s -> T.Outer }
+    NATURAL | natural                               { \s -> T.Natural }
+    JOIN | join                                     { \s -> T.Join }
+    ON | on                                         { \s -> T.On }
+    NOT | not                                       { \s -> T.Not }
+    AND | and                                       { \s -> T.And }
+    OR | or                                         { \s -> T.Or }
+    AS | as                                         { \s -> T.As }
+    TRUE | true                                     { \s -> T.Constant $ T.Boolean T.TrueVal }
+    FALSE | false                                   { \s -> T.Constant $ T.Boolean T.FalseVal  }
+    NULL | null                                     { \s -> T.Constant $ T.Boolean T.Null  }
+    @blockcomment                                   { \s -> T.BlockComment $ (removeFirstLast 2 s) }
+    @integer                                        { \s -> T.Constant $ T.Integer s }
+    @float                                          { \s -> T.Constant $ T.Float s }
+    @string                                         { \s -> T.Constant $ T.String (removeFirstLast 1 s) }
+    @dotwalk                                        { \s -> T.Dotwalk s }
+    @ident                                          { \s -> T.Identifier s }
+    
     
 {
-removeFirstLast :: [ a ] -> [ a ]
-removeFirstLast = drop 1 . reverse . drop 1
+removeFirstLast :: Int -> [ a ] -> [ a ]
+removeFirstLast int = reverse . drop int . reverse . drop int
 }

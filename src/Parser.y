@@ -4,14 +4,14 @@ module Parser
 
     ) where
 
-import Parser.Syntax
 import Parser.Syntax as S
 import Lexer.Tokens as T
+
 
 }
 
 %name parse
-%tokentype { T.Token }
+%tokentype { Tok }
 %error { parseError }
 
 %token
@@ -51,18 +51,17 @@ import Lexer.Tokens as T
     and                         { T.And }
     or                          { T.Or }
     as                          { T.As }
-    identifier                  { T.Identifier ( Simple $$ ) }
+    identifier                  { T.Identifier $$ }
     '('                         { T.RightParen }
     ')'                         { T.LeftParen }
     ','                         { T.Comma }
-    lc                          { T.LineComment $$ }
     bc                          { T.BlockComment $$ }
-    dotwalk                     { T.Identifier (Dotwalk $$) }
+    dotwalk                     { T.Dotwalk $$ }
     integer                     { T.Constant (T.Integer $$) }
     float                       { T.Constant (T.Float $$) }
     string                      { T.Constant (T.String $$) }
-    true                        { T.Constant (T.Boolean T.True) }
-    false                       { T.Constant (T.Boolean T.False) }
+    true                        { T.Constant (T.Boolean T.TrueVal) }
+    false                       { T.Constant (T.Boolean T.FalseVal) }
     null                        { T.Constant (T.Boolean T.Null ) }
 
 
@@ -71,23 +70,23 @@ import Lexer.Tokens as T
 %%
 
 -- Primitives
-Null            :: { PrimitiveType }                  
+Null            :: { S.PrimitiveType }                  
                 : null                          { (S.Boolean S.Null) }
 
-True            :: { Primitive }                  
-                : true                          { (S.Boolean S.True) }
+True            :: { S.PrimitiveType }                  
+                : true                          { (S.Boolean S.TrueVal) }
 
-False           :: { Primitive }                   
-                : false                         { (S.Boolean S.Null) }
+False           :: { S.PrimitiveType }                   
+                : false                         { (S.Boolean S.FalseVal) }
 
-String          :: { Primitive }        
+String          :: { S.PrimitiveType }        
                 : string                        { (S.String $1) }
 
-Number          :: { Primitive }                           
+Number          :: { S.PrimitiveType }                           
                 : integer                       { (S.Number $1) } -- for now we will keep numbers as a string
                 | float                         { (S.Number $1) } -- for now we will keep numbers as a string
 
-Primitive       :: { PrimitiveType }
+Primitive       :: { S.PrimitiveType }
                 : Null                          { $1 }
                 | True                          { $1 }
                 | False                         { $1 }
@@ -96,71 +95,78 @@ Primitive       :: { PrimitiveType }
 
 
 -- Expressions -- Things that evaluate to a value    
-Expr            :: { Expr }
-                : '(' Expr ')'                  { $1 }
-                : Primitive                     { Constant $1 }
-                | identifier '(' Args ')'       { Function $1 $3 }
-                | BinaryOp                      { Operator (Binary $1) }
-                | UnaryOp                       { Operator (Unary $1)}
+Expr            :: { S.Expr }
+                : '(' Expr ')'                  { $2 }
+                | Primitive                     { S.Constant $1 }
+                | identifier '(' Args ')'       { S.Function $1 $3 }
+                | BinaryOp                      { S.Operator (S.Binary $1) }
+                | UnaryOp                       { S.Operator (S.Unary $1)}
 
-Args            :: { Args }
+Args            :: { S.Args }
                 : Expr                          { [ $1 ] }
-                | Args ',' Expr                 { ($2 : $1) }
+                | Args ',' Expr                 { ($3 : $1) }
 
-BinaryOp        :: { BinaryOp }
-                : Expr '+' Expr                 { Plus $1 $3 }
-                | Expr '-' Expr                 { Minus $1 $3 }
-                | Expr '*' Expr                 { Multiply $1 $3 }
-                | Expr '/' Expr                 { FloatDivide $1 $3 }
-                | Expr '%' Expr                 { Modulo $1 $3 }
-                | Expr '=' Expr                 { Equals $1 $3 }
-                | Expr '!=' Expr                { NotEquals $1 $3 }
+BinaryOp        :: { S.BinaryOp }
+                : Expr '+' Expr                 { S.Plus $1 $3 }
+                | Expr '-' Expr                 { S.Minus $1 $3 }
+                | Expr '*' Expr                 { S.Multiply $1 $3 }
+                | Expr '/' Expr                 { S.FloatDivide $1 $3 }
+                | Expr '%' Expr                 { S.Modulo $1 $3 }
+                | Expr '=' Expr                 { S.Equals $1 $3 }
+                | Expr '!=' Expr                { S.NotEquals $1 $3 }
                 | Expr '<' Expr                 { S.LT $1 $3 }
                 | Expr '<=' Expr                { S.LTE $1 $3 }
                 | Expr '>' Expr                 { S.GT $1 $3 }
                 | Expr '>=' Expr                { S.GTE $1 $3 }
-                | Expr and Expr                 { And $1 $3 }
-                | Expr or Expr                  { Or $1 $3 }
+                | Expr and Expr                 { S.And $1 $3 }
+                | Expr or Expr                  { S.Or $1 $3 }
 
-UnaryOp         :: { UnaryOp }
-                : not Expr                      { Not $2 }
-                : '-' Expr                      { Neg $2 }
+UnaryOp         :: { S.UnaryOp }
+                : not Expr                      { S.Not $2 }
+                | '-' Expr                      { S.Neg $2 }
+
+-- Common Constructs
+Alias           :: { S.Alias }                    -- Maybe String
+                : identifier                    { Just $1 }
+                | as identifier                 { Just $2 }
 
 -- SELECT Clause
-Select          :: { Select }
-                : select '*'                    { Select Wildcard }
-                | select Columns                { Select (Columns $2) }  -- a list of Column
+Select          :: { S.Select }
+                : select '*'                    { S.Select S.Wildcard }
+                | select Columns                { S.Select (S.Columns $2) }  -- a list of Column
 
-Columns         :: { [ Column ] }
+Columns         :: { [ S.Column ] }
                 : Column                        { [$1] }      -- a list of a single Column
-                | Columns ',' Column            { $2 : $1 }   -- a list of Columns
+                | Columns ',' Column            { $3 : $1 }   -- a list of Columns
 
-Column          :: { Column }
-                : Name                          { Column $1 Nothing}
-                | Name Alias                    { Column $1 $2 }
-                | Expr Alias                    { Value $1 $2 }
+Column          :: { S.Column }
+                : Name                          { S.Column $1 Nothing}
+                | Name Alias                    { S.Column $1 $2 }
+                | Expr Alias                    { S.Value $1 $2 }
 
 Name            :: { String }
                 : identifier                    { $1 }
                 | dotwalk                       { $1 }
 
-Alias           :: { Alias }                    -- Maybe String
-                : identifier                    { Just $1 }
-                | as identifier                 { Just $2 }
-
-
 -- FROM Clause 
-From            : from Tables                   { From $2 }
+From            :: { S.From }
+                : from Tables                   { S.From $2 }
 
-Tables          : Table                         { [$1] }
-                | Tables ',' Table              { $2 : $1 }
+Tables          :: { [ S.Table ] }
+                : Table                         { [ $1 ] }
+                | Tables ',' Table              { $3 : $1 }
 
-Table           : identifier                    { Table $1 Nothing }
-                | identifier Alias              { Table $1 $2 }
+Table           :: { S.Table }
+                : identifier                    { S.Table $1 Nothing }
+                | identifier Alias              { S.Table $1 $2 }
 
+{
+type Tok = T.Token
 
+parseError :: [Tok] -> a
+parseError _ = error "Parse error"
 
-
+}
 
 
 

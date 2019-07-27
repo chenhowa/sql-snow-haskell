@@ -39,25 +39,24 @@ data Token
     | And 
     | Or 
     | As 
-    | Identifier IdentifierType 
+    | Identifier String
+    | Dotwalk String
     | RightParen 
     | LeftParen 
     | Comma 
-    | LineComment String
     | BlockComment String
     | Constant ConstantType
+    deriving (Eq, Show)
 
 data ConstantType 
     = Integer String
     | Float String 
     | String String 
     | Boolean BooleanType
+    deriving (Eq, Show)
 
 data BooleanType
-    = True 
-    | False 
+    = TrueVal
+    | FalseVal
     | Null
-
-data IdentifierType 
-    = Simple String
-    | Dotwalk String
+    deriving (Eq, Show)
