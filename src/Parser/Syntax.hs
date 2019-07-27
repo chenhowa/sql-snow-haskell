@@ -59,12 +59,6 @@ type Arg = Expr
 type ID = String
 
 data OperatorType
-    = Binary BinaryOp
-    | Unary UnaryOp
-    deriving (Eq, Show)
-
-
-data BinaryOp
     = Plus Op Op 
     | Minus Op Op 
     | FloatDivide Op Op 
@@ -78,11 +72,7 @@ data BinaryOp
     | GTE Op Op
     | And Op Op
     | Or Op Op
-    deriving (Eq, Show)
-
-
-data UnaryOp
-    = Not Op
+    | Not Op
     | Neg Op
     deriving (Eq, Show)
 

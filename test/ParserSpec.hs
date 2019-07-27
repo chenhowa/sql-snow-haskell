@@ -95,9 +95,52 @@ spec = do
                     `shouldBe` ( S.Select . S.Columns $ 
                         [ S.Column (S.Constant $ S.Number "5.0") Nothing ] )
         describe "operators" $ do 
-            it "addition" $ do 
-                pending
+            describe "single" $ do 
+                it "addition" $ do 
+                    let initial = [ T.Select ]
+                        expr = [ T.Constant $ T.Integer "5", T.Plus, T.Constant $ T.Integer "6" ]
+                        end = []
+                    parse (initial <> expr <> end)
+                        `shouldBe` ( columns $ 
+                            [ S.Column (plus (number "5") (number "6")) Nothing ] )
+                it "subtraction" $ do 
+                    let initial = [ T.Select ]
+                        expr = [ T.Constant $ T.Integer "5", T.Minus, T.Constant $ T.Integer "6" ]
+                        end = []
+                    parse (initial <> expr <> end)
+                        `shouldBe` ( columns $ 
+                            [ S.Column (minus (number "5") (number "6")) Nothing ] )
+            describe "multiple" $ do 
+                it "addition and division" $ do 
+                    pending
 
         describe "nested functions" $ do 
             it "two functions" $ do 
                 pending
+
+columns :: [S.Column] -> S.Query 
+columns = S.Select . S.Columns
+
+plus :: S.Op -> S.Op -> S.Expr
+plus op1 op2 = S.Operator $ S.Plus op1 op2
+
+minus :: S.Op -> S.Op -> S.Expr
+minus op1 op2 = S.Operator $ S.Minus op1 op2
+
+boolean :: S.BooleanType -> S.Expr
+boolean = S.Constant . S.Boolean
+
+true :: S.Expr 
+true = boolean S.TrueVal
+
+false :: S.Expr
+false = boolean S.FalseVal
+
+null :: S.Expr
+null = boolean S.Null
+
+str :: String -> S.Expr
+str = S.Constant . S.String
+
+number :: String -> S.Expr
+number = S.Constant . S.Number

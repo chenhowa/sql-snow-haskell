@@ -110,8 +110,7 @@ Expr            :: { S.Expr }
                 | identifier                    { S.Identifier $1 }
                 | dotwalk                       { S.Identifier $1 }
                 | identifier '(' Args ')'       { S.Function $1 $3 }
-                | BinaryOp                      { S.Operator (S.Binary $1) }
-                | UnaryOp                       { S.Operator (S.Unary $1)}
+                | Operator                      { S.Operator $1 }
                 | '(' Expr ')'                  { $2 }
 
 Args            :: { S.Args }
@@ -121,7 +120,7 @@ Args            :: { S.Args }
 Arg          :: { S.Arg } 
                 : Expr                          { $1 }
 
-BinaryOp        :: { S.BinaryOp }
+Operator        :: { S.OperatorType }
                 : Expr '+' Expr                 { S.Plus $1 $3 }
                 | Expr '-' Expr                 { S.Minus $1 $3 }
                 | Expr '*' Expr                 { S.Multiply $1 $3 }
@@ -135,9 +134,7 @@ BinaryOp        :: { S.BinaryOp }
                 | Expr '>=' Expr                { S.GTE $1 $3 }
                 | Expr and Expr                 { S.And $1 $3 }
                 | Expr or Expr                  { S.Or $1 $3 }
-
-UnaryOp         :: { S.UnaryOp }
-                : not Expr                      { S.Not $2 }
+                | not Expr                      { S.Not $2 }
                 | '-' Expr                      { S.Neg $2 }
 
 -- SELECT Clause
@@ -153,9 +150,6 @@ Column          :: { S.Column }
                 : Expr                          { S.Column $1 Nothing}
                 | Expr Alias                    { S.Column $1 $2 }
 
-Name            :: { String }
-                : identifier                    { $1 }
-                | dotwalk                       { $1 }
 
 -- FROM Clause 
 From            :: { [S.Table] }
