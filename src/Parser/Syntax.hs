@@ -1,30 +1,43 @@
 module Parser.Syntax where 
 
+data Query 
+    = Select SelectType
+    | From [ Table ]
+    deriving (Eq, Show)
+
 {- PRIMITIVES -}
 data Primitive 
     = Primitive PrimitiveType
+    deriving (Eq, Show)
+
 
 data PrimitiveType
     = Boolean BooleanType
     | Number String -- Is this right? I don't suppose SQL really distinguishes between ints and floats
     | String String
+    deriving (Eq, Show)
+
 
 data BooleanType
     = TrueVal
     | FalseVal
     | Null
+    deriving (Eq, Show)
+
 
 {- SELECT Clause -}
-data Select
-    = Select SelectType
 
 data SelectType 
     = Wildcard
     | Columns [ Column ]
+    deriving (Eq, Show)
+
 
 data Column 
     = Column String Alias
     | Value Expr Alias
+    deriving (Eq, Show)
+
 
 type Alias = Maybe String
 
@@ -35,6 +48,8 @@ data Expr
     | Constant PrimitiveType 
     | Function ID Args
     | Operator OperatorType
+    deriving (Eq, Show)
+
 
 type Args = [ Expr ]
 type ID = String
@@ -42,6 +57,8 @@ type ID = String
 data OperatorType
     = Binary BinaryOp
     | Unary UnaryOp
+    deriving (Eq, Show)
+
 
 data BinaryOp
     = Plus Op Op 
@@ -57,16 +74,19 @@ data BinaryOp
     | GTE Op Op
     | And Op Op
     | Or Op Op
+    deriving (Eq, Show)
+
 
 data UnaryOp
     = Not Op
     | Neg Op
+    deriving (Eq, Show)
+
 
 type Op = Expr
 
 {- FROM Clause -}
-data From  
-    = From [ Table ]
 
 data Table 
     = Table String Alias
+    deriving (Eq, Show)

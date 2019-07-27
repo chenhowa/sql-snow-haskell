@@ -69,6 +69,16 @@ import Lexer.Tokens as T
 
 %%
 
+--Overall query 
+Query           :: { S.Query }
+                : Select                        { S.Select $1 }
+                | From                          { S.From $1 }
+
+-- Common Constructs
+Alias           :: { S.Alias }                    -- Maybe String
+                : identifier                    { Just $1 }
+                | as identifier                 { Just $2 }
+
 -- Primitives
 Null            :: { S.PrimitiveType }                  
                 : null                          { (S.Boolean S.Null) }
@@ -125,15 +135,10 @@ UnaryOp         :: { S.UnaryOp }
                 : not Expr                      { S.Not $2 }
                 | '-' Expr                      { S.Neg $2 }
 
--- Common Constructs
-Alias           :: { S.Alias }                    -- Maybe String
-                : identifier                    { Just $1 }
-                | as identifier                 { Just $2 }
-
 -- SELECT Clause
-Select          :: { S.Select }
-                : select '*'                    { S.Select S.Wildcard }
-                | select Columns                { S.Select (S.Columns $2) }  -- a list of Column
+Select          :: { S.SelectType }
+                : select '*'                    { S.Wildcard }
+                | select Columns                { S.Columns $2 }  -- a list of Column
 
 Columns         :: { [ S.Column ] }
                 : Column                        { [$1] }      -- a list of a single Column
@@ -149,8 +154,8 @@ Name            :: { String }
                 | dotwalk                       { $1 }
 
 -- FROM Clause 
-From            :: { S.From }
-                : from Tables                   { S.From $2 }
+From            :: { [S.Table] }
+                : from Tables                   { $2 }
 
 Tables          :: { [ S.Table ] }
                 : Table                         { [ $1 ] }
