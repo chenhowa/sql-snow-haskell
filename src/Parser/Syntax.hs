@@ -34,8 +34,7 @@ data SelectType
 
 
 data Column 
-    = Column String Alias
-    | Value Expr Alias
+    = Column Expr Alias
     deriving (Eq, Show)
 
 
@@ -50,8 +49,13 @@ data Expr
     | Operator OperatorType
     deriving (Eq, Show)
 
+{-data Arg
+    = Col ID
+    | Val Expr
+    deriving (Eq, Show)-}
 
-type Args = [ Expr ]
+type Args = [ Arg ]
+type Arg = Expr
 type ID = String
 
 data OperatorType

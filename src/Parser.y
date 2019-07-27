@@ -52,8 +52,8 @@ import Lexer.Tokens as T
     or                          { T.Or }
     as                          { T.As }
     identifier                  { T.Identifier $$ }
-    '('                         { T.RightParen }
-    ')'                         { T.LeftParen }
+    '('                         { T.LeftParen }
+    ')'                         { T.RightParen }
     ','                         { T.Comma }
     bc                          { T.BlockComment $$ }
     dotwalk                     { T.Dotwalk $$ }
@@ -106,15 +106,20 @@ Primitive       :: { S.PrimitiveType }
 
 -- Expressions -- Things that evaluate to a value    
 Expr            :: { S.Expr }
-                : '(' Expr ')'                  { $2 }
-                | Primitive                     { S.Constant $1 }
+                : Primitive                     { S.Constant $1 }
+                | identifier                    { S.Identifier $1 }
+                | dotwalk                       { S.Identifier $1 }
                 | identifier '(' Args ')'       { S.Function $1 $3 }
                 | BinaryOp                      { S.Operator (S.Binary $1) }
                 | UnaryOp                       { S.Operator (S.Unary $1)}
+                | '(' Expr ')'                  { $2 }
 
 Args            :: { S.Args }
-                : Expr                          { [ $1 ] }
-                | Args ',' Expr                 { ($3 : $1) }
+                : Arg                           { [ $1 ] }
+                | Args ',' Arg                  { ($3 : $1) }
+
+Arg          :: { S.Arg } 
+                : Expr                          { $1 }
 
 BinaryOp        :: { S.BinaryOp }
                 : Expr '+' Expr                 { S.Plus $1 $3 }
@@ -145,9 +150,8 @@ Columns         :: { [ S.Column ] }
                 | Columns ',' Column            { $3 : $1 }   -- a list of Columns
 
 Column          :: { S.Column }
-                : Name                          { S.Column $1 Nothing}
-                | Name Alias                    { S.Column $1 $2 }
-                | Expr Alias                    { S.Value $1 $2 }
+                : Expr                          { S.Column $1 Nothing}
+                | Expr Alias                    { S.Column $1 $2 }
 
 Name            :: { String }
                 : identifier                    { $1 }
@@ -169,7 +173,7 @@ Table           :: { S.Table }
 type Tok = T.Token
 
 parseError :: [Tok] -> a
-parseError _ = error "Parse error"
+parseError tok = error $ "Parse error around " ++ (show tok)
 
 }
 
