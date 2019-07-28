@@ -1,8 +1,7 @@
 module Parser.Syntax where 
 
 data Query 
-    = Select SelectType
-    | From [ Table ]
+    = Select SelectType (Maybe From)
     deriving (Eq, Show)
 
 {- PRIMITIVES -}
@@ -81,6 +80,36 @@ type Op = Expr
 
 {- FROM Clause -}
 
+data From
+    = From [ Table ] (Maybe Where) (Maybe GroupBy) (Maybe OrderBy)
+    deriving (Eq, Show)
+
 data Table 
     = Table String Alias
+    deriving (Eq, Show)
+
+{- WHERE Clause -}
+
+data Where 
+    = Where Expr
+    deriving (Eq, Show)
+
+{- GROUP BY Clause -}
+data GroupBy
+    = GroupBy [ ID ] (Maybe Having)
+    deriving (Eq, Show)
+
+{- HAVING Clause -}
+data Having
+    = Having Expr
+    deriving (Eq, Show)
+
+{- ORDER BY -}
+data OrderBy 
+    = OrderBy [String] (Maybe Direction)
+    deriving (Eq, Show)
+
+data Direction 
+    = Ascending 
+    | Descending
     deriving (Eq, Show)

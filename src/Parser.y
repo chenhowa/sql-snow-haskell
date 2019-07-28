@@ -24,8 +24,8 @@ import Lexer.Tokens as T
     distinct                    { T.Distinct }
     limit                       { T.Limit }
     orderBy                     { T.OrderBy }
-    asc                         { T.Ascending }
-    desc                        { T.Descending }
+    ascending                   { T.Ascending }
+    descending                  { T.Descending }
     union                       { T.Union }
     intersect                   { T.Intersect }
     all                         { T.All }
@@ -76,8 +76,8 @@ import Lexer.Tokens as T
 
 --Overall query 
 Query           :: { S.Query }
-                : Select                        { S.Select $1 }
-                | From                          { S.From $1 }
+                : Select                        { S.Select $1 Nothing  }
+                | Select From                   { S.Select $1 (Just $2) }
 
 -- Common Constructs
 Alias           :: { S.Alias }                    -- Maybe String
@@ -157,8 +157,15 @@ Column          :: { S.Column }
 
 
 -- FROM Clause 
-From            :: { [S.Table] }
-                : from Tables                   { $2 }
+From            :: { S.From }
+                : from Tables                   { S.From $2 Nothing Nothing Nothing }
+                | from Tables GroupBy           { S.From $2 Nothing (Just $3) Nothing}
+                | from Tables Where             { S.From $2 (Just $3) Nothing Nothing}
+                | from Tables Where GroupBy     { S.From $2 (Just $3) (Just $4) Nothing }
+                | from Tables OrderBy                   { S.From $2 Nothing Nothing (Just $3) }
+                | from Tables GroupBy OrderBy           { S.From $2 Nothing (Just $3) (Just $4) }
+                | from Tables Where OrderBy             { S.From $2 (Just $3) Nothing (Just $4) } 
+                | from Tables Where GroupBy OrderBy     { S.From $2 (Just $3) (Just $4) (Just $5)}
 
 Tables          :: { [ S.Table ] }
                 : Table                         { [ $1 ] }
@@ -167,6 +174,34 @@ Tables          :: { [ S.Table ] }
 Table           :: { S.Table }
                 : identifier                    { S.Table $1 Nothing }
                 | identifier Alias              { S.Table $1 $2 }
+
+-- WHERE Clause 
+Where           :: { S.Where }
+                : where Expr                    { S.Where $2 }
+
+-- GROUP BY Clause 
+GroupBy         :: { S.GroupBy }
+                : groupBy ColNames              { S.GroupBy $2 Nothing }
+                | groupBy ColNames Having       { S.GroupBy $2 (Just $3)}
+
+ColNames        :: { [ String ] }
+                : identifier                    { [ $1 ]}
+                | dotwalk                       { [ $1 ] }
+                | ColNames ',' identifier       { $3 : $1 }
+                | ColNames ',' dotwalk          { $3 : $1 }
+
+-- HAVING Clause 
+Having          :: { S.Having }
+                : having Expr                   { S.Having $2 }
+
+-- ORDER BY Clause
+OrderBy         :: { S.OrderBy }
+                : orderBy ColNames              { S.OrderBy $2 Nothing }
+                | orderBy ColNames Direction    { S.OrderBy $2 (Just $3)}
+
+Direction       :: { S.Direction } 
+                : ascending                     { S.Ascending }
+                | descending                    { S.Descending }
 
 {
 type Tok = T.Token

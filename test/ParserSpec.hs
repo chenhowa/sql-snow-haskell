@@ -12,51 +12,51 @@ spec :: Spec
 spec = do 
     describe "select" $ do 
         it "wildcard" $ do 
-            parse [ T.Select, T.Asterisk ] `shouldBe` (S.Select S.Wildcard)
+            parse [ T.Select, T.Asterisk ] `shouldBe` (S.Select S.Wildcard Nothing)
         describe "one column" $ do
             it "no alias" $ do 
                 parse [ T.Select, T.Identifier "what" ] `shouldBe` 
-                        (S.Select $ S.Columns [Column (S.Identifier "what") Nothing])
+                        (columns [Column (S.Identifier "what") Nothing])
             it "alias" $ do 
                 parse [ T.Select, T.Identifier "what", T.As, T.Identifier "W" ] `shouldBe` 
-                        (S.Select $ S.Columns [Column (S.Identifier "what") $ Just "W"])
+                        (columns [Column (S.Identifier "what") $ Just "W"])
                 parse [ T.Select, T.Identifier "what", T.Identifier "W" ] `shouldBe` 
-                        (S.Select $ S.Columns [Column (S.Identifier "what") $ Just "W"])
+                        (columns [Column (S.Identifier "what") $ Just "W"])
         describe "multiple columns" $ do 
             it "no alias" $ do 
                 parse [ T.Select, T.Identifier "what", T.Comma, T.Identifier "why" ] `shouldBe` 
-                        (S.Select $ S.Columns [Column (S.Identifier "why") Nothing, Column (S.Identifier "what") Nothing])
+                        (columns [Column (S.Identifier "why") Nothing, Column (S.Identifier "what") Nothing])
             it "alias" $ do 
                 parse [ T.Select, T.Identifier "what", 
                                 T.Identifier "W", T.Comma, 
                                 T.Identifier "why", T.Identifier "Y" ] `shouldBe` 
-                        (S.Select $ S.Columns [Column (S.Identifier "why") $ Just "Y", Column (S.Identifier "what") $ Just "W" ])
+                        (columns [Column (S.Identifier "why") $ Just "Y", Column (S.Identifier "what") $ Just "W" ])
                 parse [ T.Select, T.Identifier "what", T.As, T.Identifier "W", T.Comma, 
                                 T.Identifier "why", T.As, T.Identifier "Y" ] `shouldBe` 
-                        (S.Select $ S.Columns [Column (S.Identifier "why") $ Just "Y", Column (S.Identifier "what") $ Just "W" ])
+                        (columns [Column (S.Identifier "why") $ Just "Y", Column (S.Identifier "what") $ Just "W" ])
 
     describe "from" $ do 
         describe "one table" $ do 
             it "no alias" $ do 
-                parse [ T.From, T.Identifier "incident"]
-                    `shouldBe` S.From [Table "incident" Nothing]
+                parse [ T.Select, T.Asterisk, T.From, T.Identifier "incident"]
+                    `shouldBe` from [Table "incident" Nothing]
             it "alias" $ do 
-                parse [ T.From, T.Identifier "incident", T.Identifier "In"]
-                    `shouldBe` S.From [Table "incident" $ Just "In"]
-                parse [ T.From, T.Identifier "incident", T.As, T.Identifier "In"]
-                    `shouldBe` S.From [Table "incident" $ Just "In"]
+                parse [ T.Select, T.Asterisk, T.From, T.Identifier "incident", T.Identifier "In"]
+                    `shouldBe` from [Table "incident" $ Just "In"]
+                parse [ T.Select, T.Asterisk, T.From, T.Identifier "incident", T.As, T.Identifier "In"]
+                    `shouldBe` from [Table "incident" $ Just "In"]
         describe "multiple tables" $ do
             it "no alias" $ do 
-                parse [ T.From, T.Identifier "incident", 
+                parse [ T.Select, T.Asterisk, T.From, T.Identifier "incident", 
                     T.Comma, T.Identifier "problem"]
-                    `shouldBe` S.From [Table "problem" Nothing, Table "incident" Nothing]
+                    `shouldBe` from [Table "problem" Nothing, Table "incident" Nothing]
             it "alias" $ do 
-                parse [ T.From, T.Identifier "incident", T.Identifier "In",
+                parse [ T.Select, T.Asterisk, T.From, T.Identifier "incident", T.Identifier "In",
                     T.Comma, T.Identifier "problem", T.Identifier "P"]
-                    `shouldBe` S.From [Table "problem" $ Just "P", Table "incident" $ Just "In"]
-                parse [ T.From, T.Identifier "incident", T.As, T.Identifier "In",
+                    `shouldBe` from [Table "problem" $ Just "P", Table "incident" $ Just "In"]
+                parse [ T.Select, T.Asterisk, T.From, T.Identifier "incident", T.As, T.Identifier "In",
                         T.Comma, T.Identifier "problem", T.As, T.Identifier "P"]
-                    `shouldBe` S.From [Table "problem" $ Just "P", Table "incident" $ Just "In"]
+                    `shouldBe` from [Table "problem" $ Just "P", Table "incident" $ Just "In"]
 
     describe "expression" $ do 
         describe "function with args" $ do 
@@ -65,7 +65,7 @@ spec = do
                     expr = [ T.Identifier "name" ]
                     end = [ T.RightParen ]
                 parse (initial <> expr <> end)
-                    `shouldBe` ( S.Select . S.Columns $ 
+                    `shouldBe` ( columns 
                         [ S.Column (S.Function "COUNT" [S.Identifier "name"]) Nothing ] )
         describe "constant" $ do 
             it "boolean" $ do 
@@ -73,28 +73,28 @@ spec = do
                     expr = [ T.Constant $ T.Boolean T.TrueVal ]
                     end = []
                 parse (initial <> expr <> end)
-                    `shouldBe` ( S.Select . S.Columns $ 
+                    `shouldBe` ( columns 
                         [ S.Column (S.Constant $ S.Boolean S.TrueVal) Nothing ] )
             it "string" $ do 
                 let initial = [ T.Select ]
                     expr = [ T.Constant $ T.String "hey" ]
                     end = []
                 parse (initial <> expr <> end)
-                    `shouldBe` ( S.Select . S.Columns $ 
+                    `shouldBe` ( columns 
                         [ S.Column (S.Constant $ S.String "hey") Nothing ] )
             it "integer" $ do 
                 let initial = [ T.Select ]
                     expr = [ T.Constant $ T.Integer "5" ]
                     end = []
                 parse (initial <> expr <> end)
-                    `shouldBe` ( S.Select . S.Columns $ 
+                    `shouldBe` ( columns 
                         [ S.Column (S.Constant $ S.Number "5") Nothing ] )
             it "float" $ do 
                 let initial = [ T.Select ]
                     expr = [ T.Constant $ T.Float "5.0" ]
                     end = []
                 parse (initial <> expr <> end)
-                    `shouldBe` ( S.Select . S.Columns $ 
+                    `shouldBe` ( columns 
                         [ S.Column (S.Constant $ S.Number "5.0") Nothing ] )
         describe "operators" $ do 
             describe "single" $ do 
@@ -237,21 +237,52 @@ spec = do
                     expr = [ tid "floor", T.LeftParen, tid "Count", T.LeftParen, tid "name", T.RightParen, T.RightParen]
                 parse (initial <> expr) `shouldBe` (columns $ 
                     [ S.Column (S.Function "floor" [S.Function "Count" [S.Identifier "name"]]) Nothing])
+    describe "where" $ do 
+        it "expression" $ do 
+            let expr = [ T.Select, T.Asterisk, T.From, tid "incident", T.Where, five, T.LT, six]
+                five = T.Constant $ T.Integer "5"
+                six = T.Constant $ T.Integer "6"
+                nFive = number "5"
+                nSix = number "6"
+            parse expr `shouldBe` (where_ [S.Table "incident" Nothing] (lessThan nFive nSix))
 
-    describe "from" $ do 
-        describe "one table" $ do 
-            it "no alias" $ do 
-                let expr = [ T.From, tid "incident"]
-                parse expr `shouldBe` (S.From [ S.Table "incident" Nothing])
-            it "alias" $ do 
-                let expr = [ T.From, tid "incident", tid "I"]
-                parse expr `shouldBe` (S.From [ S.Table "incident" $ Just "I"])
+    describe "group by" $ do 
+        it "columns" $ do 
+            let expr = [ T.Select, T.Asterisk, T.From, tid "incident", T.GroupBy, tid "category", T.Comma, tid "subcategory"]
+            parse expr `shouldBe` (groupBy [S.Table "incident" Nothing] ["subcategory", "category"])
+        it "alias table columns" $ do 
+            let expr = [ T.Select, T.Asterisk, T.From, tid "incident", tid "In", T.GroupBy, tid "In.category", T.Comma, tid "In.subcategory"]
+            parse expr `shouldBe` (groupBy [S.Table "incident" (Just "In")] ["In.subcategory", "In.category"])
+    describe "having" $ do 
+        it "expression" $ do 
+            let expr = [ T.Select, T.Asterisk, T.From, tid "incident", T.GroupBy, tid "category", 
+                                T.Having, tid "COUNT", T.LeftParen, T.Constant $ T.Integer "5", T.RightParen]
+                expected =  having [S.Table "incident" Nothing ] ["category"] (S.Function "COUNT" [five]) 
+                five = number "5"
+            parse expr `shouldBe` expected
+    describe "order by" $ do 
+        it "no direction" $ do 
+            let expr = [ T.Select, T.Asterisk, T.From, tid "incident", T.OrderBy, tid "category"]
+                expected = orderBy [S.Table "incident" Nothing] ["category"] Nothing
+            parse expr `shouldBe` expected
 
-                let expr2 = [ T.From, tid "incident", T.As, tid "I"]
-                parse expr2 `shouldBe` (S.From [ S.Table "incident" $ Just "I"])
+orderBy :: [S.Table] -> [String] -> Maybe S.Direction -> S.Query 
+orderBy ts ids dir = S.Select S.Wildcard $ Just (S.From ts Nothing Nothing $ Just (S.OrderBy ids Nothing))
+
+having :: [ S.Table ] -> [ String ] -> S.Expr -> S.Query
+having ts ids expr = S.Select S.Wildcard $ Just (S.From ts Nothing (Just $ S.GroupBy ids (Just $ S.Having expr)) Nothing)
+
+groupBy :: [ S.Table ] -> [ String ] -> S.Query
+groupBy ts ids = S.Select S.Wildcard $ Just (S.From ts Nothing (Just $ S.GroupBy ids Nothing) Nothing)
+
+where_ :: [ S.Table ] -> Expr -> S.Query 
+where_ ts expr = S.Select S.Wildcard $ Just (S.From ts (Just $ S.Where expr) Nothing Nothing)
+
+from :: [ S.Table ] -> S.Query
+from tables = S.Select S.Wildcard (Just (S.From tables Nothing Nothing Nothing))
 
 columns :: [S.Column] -> S.Query 
-columns = S.Select . S.Columns
+columns cols = (S.Select ( S.Columns cols) Nothing)
 
 tid :: String -> T.Token
 tid str = T.Identifier str
