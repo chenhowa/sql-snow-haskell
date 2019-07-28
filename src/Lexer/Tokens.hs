@@ -45,10 +45,10 @@ data Token
     | LeftParen  --addressed in parser
     | Comma  --addressed in parser
     | BlockComment String
-    | Integer String
-    | Float String
-    | String String
-    | TrueVal
-    | FalseVal
-    | Null
+    | Integer String -- addressed in parser
+    | Float String -- addressed in parser
+    | String String -- addressed in parser
+    | TrueVal -- addressed in parser
+    | FalseVal -- addressed in parser
+    | Null -- addressed in parser
     deriving (Eq, Show)

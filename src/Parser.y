@@ -76,7 +76,8 @@ import Lexer.Tokens as T
 
 --Overall query 
 Query           :: { S.Query }
-                : select SType                        { S.Select $2 Nothing S.All }
+                : '(' Query ')'                         { $2 }
+                | select SType                        { S.Select $2 Nothing S.All }
                 | select SType From                   { S.Select $2 (Just $3) S.All }
                 | select distinct SType                { S.Select $3 Nothing S.Distinct }
                 | select distinct SType From           { S.Select $3 (Just $4) S.Distinct }
