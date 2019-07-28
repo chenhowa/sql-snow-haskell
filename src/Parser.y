@@ -161,41 +161,29 @@ Column          :: { S.Column }
 
 -- FROM Clause 
 From            :: { S.FromClause }
-                : from Tables                   { S.mkFromClause $2 Nothing Nothing Nothing Nothing }
-                | from Tables GroupBy           { S.mkFromClause $2 Nothing $3 Nothing Nothing }
-                | from Tables Where             { S.mkFromClause $2 $3 Nothing Nothing Nothing }
-                | from Tables Where GroupBy     { S.mkFromClause $2 $3 $4 Nothing Nothing }
-                | from Tables OrderBy                   { S.mkFromClause $2 Nothing Nothing $3 Nothing }
-                | from Tables GroupBy OrderBy           { S.mkFromClause $2 Nothing $3 $4 Nothing }
-                | from Tables Where OrderBy             { S.mkFromClause $2 $3 Nothing $4 Nothing }
-                | from Tables Where GroupBy OrderBy     { S.mkFromClause $2 $3 $4 $5 Nothing }
-                | from Tables Limit                  { S.mkFromClause $2 Nothing Nothing Nothing $3 }
-                | from Tables GroupBy Limit          { S.mkFromClause $2 Nothing $3 Nothing $4 }
-                | from Tables Where Limit            { S.mkFromClause $2 $3 Nothing Nothing $4 }
-                | from Tables Where GroupBy Limit    { S.mkFromClause $2 $3 $4 Nothing $5  }
-                | from Tables OrderBy Limit                  { S.mkFromClause $2 Nothing Nothing $3 $4 }
-                | from Tables GroupBy OrderBy Limit          { S.mkFromClause $2 Nothing $3 $4 $5 }
-                | from Tables Where OrderBy Limit            { S.mkFromClause $2 $3 Nothing $4 $5 }
-                | from Tables Where GroupBy OrderBy Limit    { S.mkFromClause $2 $3 $4 $5 $6 }
+                : from Tables Where GroupBy OrderBy Limit    { S.mkFromClause $2 $3 $4 $5 $6 }
 
 Tables          :: { [ S.Table ] }
                 : Table                         { [ $1 ] }
                 | Tables ',' Table              { $3 : $1 }
 
-Table           :: { S.Table }
+Table           :: { S.Table }  
                 : identifier                    { S.Table $1 Nothing }
                 | identifier Alias              { S.Table $1 $2 }
 
 Limit           :: { Maybe S.Limit }                  
-                : limit integer                 { Just $2 }
+                : {- empty -}                   { Nothing }
+                | limit integer                 { Just $2 }
 
 -- WHERE Clause 
 Where           :: { Maybe S.Where }
-                : where Expr                    { Just $2 }
+                : {- empty -}                   { Nothing }
+                | where Expr                    { Just $2 }
 
 -- GROUP BY Clause 
 GroupBy         :: { Maybe S.GroupBy }
-                : groupBy ColNames              { Just $ S.GroupBy $2 Nothing }
+                : {- empty -}                   { Nothing } 
+                | groupBy ColNames              { Just $ S.GroupBy $2 Nothing }
                 | groupBy ColNames Having       { Just $ S.GroupBy $2 (Just $3)}
 
 ColNames        :: { [ String ] }
@@ -210,7 +198,8 @@ Having          :: { S.Having }
 
 -- ORDER BY Clause
 OrderBy         :: { Maybe S.OrderBy }
-                : orderBy ColNames              { Just $ S.OrderBy $2 Nothing }
+                : {- empty -}                   { Nothing }
+                | orderBy ColNames              { Just $ S.OrderBy $2 Nothing }
                 | orderBy ColNames Direction    { Just $ S.OrderBy $2 (Just $3)}
 
 Direction       :: { S.Direction } 
