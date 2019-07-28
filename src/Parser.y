@@ -76,8 +76,10 @@ import Lexer.Tokens as T
 
 --Overall query 
 Query           :: { S.Query }
-                : Select                        { S.Select $1 Nothing  }
-                | Select From                   { S.Select $1 (Just $2) }
+                : select SType                        { S.Select $2 Nothing S.All }
+                | select SType From                   { S.Select $2 (Just $3) S.All }
+                | select distinct SType                { S.Select $3 Nothing S.Distinct }
+                | select distinct SType From           { S.Select $3 (Just $4) S.Distinct }
 
 -- Common Constructs
 Alias           :: { S.Alias }                    -- Maybe String
@@ -143,9 +145,9 @@ Operator        :: { S.OperatorType }
                 | '-' Expr %prec NEG            { S.Neg $2 }
 
 -- SELECT Clause
-Select          :: { S.SelectType }
-                : select '*'                    { S.Wildcard }
-                | select Columns                { S.Columns $2 }  -- a list of Column
+SType          :: { S.SelectType }
+                : '*'                           { S.Wildcard }
+                | Columns                       { S.Columns $1 }  
 
 Columns         :: { [ S.Column ] }
                 : Column                        { [$1] }      -- a list of a single Column

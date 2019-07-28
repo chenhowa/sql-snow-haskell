@@ -1,7 +1,7 @@
 module Parser.Syntax where 
 
 data Query 
-    = Select SelectType (Maybe From)
+    = Select SelectType (Maybe From) Unique
     deriving (Eq, Show)
 
 {- PRIMITIVES -}
@@ -36,6 +36,10 @@ data Column
     = Column Expr Alias
     deriving (Eq, Show)
 
+data Unique
+    = All 
+    | Distinct
+    deriving (Eq, Show)
 
 type Alias = Maybe String
 
