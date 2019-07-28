@@ -63,7 +63,7 @@ spec = do
                     `shouldBe` from [Table "problem" $ Just "P", Table "incident" $ Just "In"]
         it "with limit" $ do 
             let expr = [ T.Select, T.Asterisk, T.From, tid "incident", T.Limit, T.Integer "5"]
-                expected = limit [ S.Table "incident" Nothing ] "5"
+                expected = genLimit [ S.Table "incident" Nothing ] "5"
             parse expr `shouldBe` expected
 
     describe "expression" $ do 
@@ -252,15 +252,15 @@ spec = do
                 six = T.Integer "6"
                 nFive = number "5"
                 nSix = number "6"
-            parse expr `shouldBe` (where_ [S.Table "incident" Nothing] (lessThan nFive nSix))
+            parse expr `shouldBe` (genWhere_ [S.Table "incident" Nothing] (lessThan nFive nSix))
 
     describe "group by" $ do 
         it "columns" $ do 
             let expr = [ T.Select, T.Asterisk, T.From, tid "incident", T.GroupBy, tid "category", T.Comma, tid "subcategory"]
-            parse expr `shouldBe` (groupBy [S.Table "incident" Nothing] ["subcategory", "category"])
+            parse expr `shouldBe` (genGroupBy [S.Table "incident" Nothing] ["subcategory", "category"])
         it "alias table columns" $ do 
             let expr = [ T.Select, T.Asterisk, T.From, tid "incident", tid "In", T.GroupBy, tid "In.category", T.Comma, tid "In.subcategory"]
-            parse expr `shouldBe` (groupBy [S.Table "incident" (Just "In")] ["In.subcategory", "In.category"])
+            parse expr `shouldBe` (genGroupBy [S.Table "incident" (Just "In")] ["In.subcategory", "In.category"])
     describe "having" $ do 
         it "expression" $ do 
             let expr = [ T.Select, T.Asterisk, T.From, tid "incident", T.GroupBy, tid "category", 
@@ -271,26 +271,26 @@ spec = do
     describe "order by" $ do 
         it "no direction" $ do 
             let expr = [ T.Select, T.Asterisk, T.From, tid "incident", T.OrderBy, tid "category"]
-                expected = orderBy [S.Table "incident" Nothing] ["category"] Nothing
+                expected = genOrderBy [S.Table "incident" Nothing] ["category"] Nothing
             parse expr `shouldBe` expected
 
-orderBy :: [S.Table] -> [String] -> Maybe S.Direction -> S.Query 
-orderBy ts ids dir = S.Select S.Wildcard ( Just (S.From ts Nothing Nothing (Just (S.OrderBy ids Nothing)) Nothing) ) S.All
+genOrderBy :: [S.Table] -> [String] -> Maybe S.Direction -> S.Query 
+genOrderBy ts ids dir = S.Select S.Wildcard ( Just (S.mkFromClause ts Nothing Nothing (Just (S.OrderBy ids Nothing)) Nothing) ) S.All
 
 having :: [ S.Table ] -> [ String ] -> S.Expr -> S.Query
-having ts ids expr = S.Select S.Wildcard ( Just (S.From ts Nothing (Just $ S.GroupBy ids (Just $ S.Having expr)) Nothing Nothing) ) S.All
+having ts ids expr = S.Select S.Wildcard ( Just (S.mkFromClause ts Nothing (Just $ S.GroupBy ids (Just $ S.Having expr)) Nothing Nothing) ) S.All
 
-groupBy :: [ S.Table ] -> [ String ] -> S.Query
-groupBy ts ids = S.Select S.Wildcard ( Just (S.From ts Nothing (Just $ S.GroupBy ids Nothing) Nothing Nothing) ) S.All
+genGroupBy :: [ S.Table ] -> [ String ] -> S.Query
+genGroupBy ts ids = S.Select S.Wildcard ( Just (S.mkFromClause ts Nothing (Just $ S.GroupBy ids Nothing) Nothing Nothing) ) S.All
 
-where_ :: [ S.Table ] -> Expr -> S.Query 
-where_ ts expr = S.Select S.Wildcard ( Just (S.From ts (Just $ S.Where expr) Nothing Nothing Nothing) ) S.All
+genWhere_ :: [ S.Table ] -> Expr -> S.Query 
+genWhere_ ts expr = S.Select S.Wildcard ( Just (S.mkFromClause ts (Just expr) Nothing Nothing Nothing) ) S.All
 
-limit :: [S.Table] -> String -> S.Query 
-limit tables lim = S.Select S.Wildcard (Just (S.From tables Nothing Nothing Nothing (Just $ S.Limit lim)))  S.All
+genLimit :: [S.Table] -> String -> S.Query 
+genLimit tables lim = S.Select S.Wildcard (Just (S.mkFromClause tables Nothing Nothing Nothing (Just $ lim)))  S.All
 
 from :: [ S.Table ] -> S.Query
-from tables = S.Select S.Wildcard (Just (S.From tables Nothing Nothing Nothing Nothing))  S.All
+from tables = S.Select S.Wildcard (Just (S.mkFromClause tables Nothing Nothing Nothing Nothing))  S.All
 
 columns :: [S.Column] -> S.Query 
 columns cols = S.Select ( S.Columns cols) Nothing S.All

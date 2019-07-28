@@ -159,23 +159,23 @@ Column          :: { S.Column }
 
 
 -- FROM Clause 
-From            :: { S.From }
-                : from Tables                   { S.From $2 Nothing Nothing Nothing Nothing}
-                | from Tables GroupBy           { S.From $2 Nothing (Just $3) Nothing Nothing}
-                | from Tables Where             { S.From $2 (Just $3) Nothing Nothing Nothing}
-                | from Tables Where GroupBy     { S.From $2 (Just $3) (Just $4) Nothing  Nothing}
-                | from Tables OrderBy                   { S.From $2 Nothing Nothing (Just $3)  Nothing}
-                | from Tables GroupBy OrderBy           { S.From $2 Nothing (Just $3) (Just $4)  Nothing}
-                | from Tables Where OrderBy             { S.From $2 (Just $3) Nothing (Just $4)  Nothing} 
-                | from Tables Where GroupBy OrderBy     { S.From $2 (Just $3) (Just $4) (Just $5) Nothing}
-                | from Tables Limit                  { S.From $2 Nothing Nothing Nothing (Just $3) }
-                | from Tables GroupBy Limit          { S.From $2 Nothing (Just $3) Nothing (Just $4)}
-                | from Tables Where Limit            { S.From $2 (Just $3) Nothing Nothing (Just $4)}
-                | from Tables Where GroupBy Limit    { S.From $2 (Just $3) (Just $4) Nothing (Just $5)}
-                | from Tables OrderBy Limit                  { S.From $2 Nothing Nothing (Just $3) (Just $4)}
-                | from Tables GroupBy OrderBy Limit          { S.From $2 Nothing (Just $3) (Just $4) (Just $5)}
-                | from Tables Where OrderBy Limit            { S.From $2 (Just $3) Nothing (Just $4) (Just $5)} 
-                | from Tables Where GroupBy OrderBy Limit    { S.From $2 (Just $3) (Just $4) (Just $5) (Just $6)}
+From            :: { S.FromClause }
+                : from Tables                   { S.mkFromClause $2 Nothing Nothing Nothing Nothing }
+                | from Tables GroupBy           { S.mkFromClause $2 Nothing $3 Nothing Nothing }
+                | from Tables Where             { S.mkFromClause $2 $3 Nothing Nothing Nothing }
+                | from Tables Where GroupBy     { S.mkFromClause $2 $3 $4 Nothing Nothing }
+                | from Tables OrderBy                   { S.mkFromClause $2 Nothing Nothing $3 Nothing }
+                | from Tables GroupBy OrderBy           { S.mkFromClause $2 Nothing $3 $4 Nothing }
+                | from Tables Where OrderBy             { S.mkFromClause $2 $3 Nothing $4 Nothing }
+                | from Tables Where GroupBy OrderBy     { S.mkFromClause $2 $3 $4 $5 Nothing }
+                | from Tables Limit                  { S.mkFromClause $2 Nothing Nothing Nothing $3 }
+                | from Tables GroupBy Limit          { S.mkFromClause $2 Nothing $3 Nothing $4 }
+                | from Tables Where Limit            { S.mkFromClause $2 $3 Nothing Nothing $4 }
+                | from Tables Where GroupBy Limit    { S.mkFromClause $2 $3 $4 Nothing $5  }
+                | from Tables OrderBy Limit                  { S.mkFromClause $2 Nothing Nothing $3 $4 }
+                | from Tables GroupBy OrderBy Limit          { S.mkFromClause $2 Nothing $3 $4 $5 }
+                | from Tables Where OrderBy Limit            { S.mkFromClause $2 $3 Nothing $4 $5 }
+                | from Tables Where GroupBy OrderBy Limit    { S.mkFromClause $2 $3 $4 $5 $6 }
 
 Tables          :: { [ S.Table ] }
                 : Table                         { [ $1 ] }
@@ -185,17 +185,17 @@ Table           :: { S.Table }
                 : identifier                    { S.Table $1 Nothing }
                 | identifier Alias              { S.Table $1 $2 }
 
-Limit           :: { S.Limit }                  
-                : limit integer                 { S.Limit $2 }
+Limit           :: { Maybe S.Limit }                  
+                : limit integer                 { Just $2 }
 
 -- WHERE Clause 
-Where           :: { S.Where }
-                : where Expr                    { S.Where $2 }
+Where           :: { Maybe S.Where }
+                : where Expr                    { Just $2 }
 
 -- GROUP BY Clause 
-GroupBy         :: { S.GroupBy }
-                : groupBy ColNames              { S.GroupBy $2 Nothing }
-                | groupBy ColNames Having       { S.GroupBy $2 (Just $3)}
+GroupBy         :: { Maybe S.GroupBy }
+                : groupBy ColNames              { Just $ S.GroupBy $2 Nothing }
+                | groupBy ColNames Having       { Just $ S.GroupBy $2 (Just $3)}
 
 ColNames        :: { [ String ] }
                 : identifier                    { [ $1 ]}
@@ -208,9 +208,9 @@ Having          :: { S.Having }
                 : having Expr                   { S.Having $2 }
 
 -- ORDER BY Clause
-OrderBy         :: { S.OrderBy }
-                : orderBy ColNames              { S.OrderBy $2 Nothing }
-                | orderBy ColNames Direction    { S.OrderBy $2 (Just $3)}
+OrderBy         :: { Maybe S.OrderBy }
+                : orderBy ColNames              { Just $ S.OrderBy $2 Nothing }
+                | orderBy ColNames Direction    { Just $ S.OrderBy $2 (Just $3)}
 
 Direction       :: { S.Direction } 
                 : ascending                     { S.Ascending }

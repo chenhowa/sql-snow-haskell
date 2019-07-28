@@ -1,7 +1,7 @@
 module Parser.Syntax where 
 
 data Query 
-    = Select SelectType (Maybe From) Unique
+    = Select SelectType (Maybe FromClause) Unique
     deriving (Eq, Show)
 
 {- PRIMITIVES -}
@@ -84,23 +84,33 @@ type Op = Expr
 
 {- FROM Clause -}
 
-data From
-    = From [ Table ] (Maybe Where) (Maybe GroupBy) (Maybe OrderBy) (Maybe Limit)
+data FromClause = FromClause 
+    { tables :: [ Table ]
+    , where_ :: Maybe Where
+    , groupBy :: Maybe GroupBy
+    , orderBy :: Maybe OrderBy
+    , limit :: Maybe Limit
+    }
     deriving (Eq, Show)
+
+mkFromClause :: [Table] -> Maybe Where -> Maybe GroupBy -> Maybe OrderBy -> Maybe Limit -> FromClause
+mkFromClause ts w g o l = FromClause
+    { tables = ts 
+    , where_ = w 
+    , groupBy = g 
+    , orderBy = o 
+    , limit = l
+    }
 
 data Table 
     = Table String Alias
     deriving (Eq, Show)
 
-data Limit
-    = Limit String
-    deriving (Eq, Show)
+type Limit = String
 
 {- WHERE Clause -}
 
-data Where 
-    = Where Expr
-    deriving (Eq, Show)
+type Where = Expr
 
 {- GROUP BY Clause -}
 data GroupBy
