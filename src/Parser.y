@@ -64,8 +64,13 @@ import Lexer.Tokens as T
     false                       { T.Constant (T.Boolean T.FalseVal) }
     null                        { T.Constant (T.Boolean T.Null ) }
 
-
-
+%left or
+%left and
+%left not
+%nonassoc '=' '!=' '<' '<=' '>' '>='
+%left '+' '-'
+%left '*' '/' '%'
+%left NEG
 
 %%
 
@@ -135,7 +140,7 @@ Operator        :: { S.OperatorType }
                 | Expr and Expr                 { S.And $1 $3 }
                 | Expr or Expr                  { S.Or $1 $3 }
                 | not Expr                      { S.Not $2 }
-                | '-' Expr                      { S.Neg $2 }
+                | '-' Expr %prec NEG            { S.Neg $2 }
 
 -- SELECT Clause
 Select          :: { S.SelectType }

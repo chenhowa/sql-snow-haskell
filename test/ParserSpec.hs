@@ -5,6 +5,8 @@ import Test.Hspec
 import Parser (parse)
 import Parser.Syntax as S
 import Lexer.Tokens as T
+import Parser.Expressions
+import Parser.Expressions as E
 
 spec :: Spec
 spec = do 
@@ -96,51 +98,144 @@ spec = do
                         [ S.Column (S.Constant $ S.Number "5.0") Nothing ] )
         describe "operators" $ do 
             describe "single" $ do 
+                let five = T.Constant $ T.Integer "5"
+                    six = T.Constant $ T.Integer "6"
                 it "addition" $ do 
                     let initial = [ T.Select ]
-                        expr = [ T.Constant $ T.Integer "5", T.Plus, T.Constant $ T.Integer "6" ]
+                        expr = [ five, T.Plus, six ]
                         end = []
                     parse (initial <> expr <> end)
                         `shouldBe` ( columns $ 
                             [ S.Column (plus (number "5") (number "6")) Nothing ] )
                 it "subtraction" $ do 
                     let initial = [ T.Select ]
-                        expr = [ T.Constant $ T.Integer "5", T.Minus, T.Constant $ T.Integer "6" ]
+                        expr = [ five, T.Minus, six ]
                         end = []
                     parse (initial <> expr <> end)
                         `shouldBe` ( columns $ 
                             [ S.Column (minus (number "5") (number "6")) Nothing ] )
+                it "division" $ do 
+                    let initial = [ T.Select ]
+                        expr = [ five, T.FloatDivide, six ]
+                        end = []
+                    parse (initial <> expr <> end)
+                        `shouldBe` ( columns $ 
+                            [ S.Column (divide (number "5") (number "6")) Nothing])
+                it "modulo" $ do 
+                    let initial = [ T.Select ]
+                        expr = [ five, T.Modulo, six ]
+                        end = []
+                    parse (initial <> expr <> end)
+                        `shouldBe` ( columns $ 
+                            [ S.Column (modulo (number "5") (number "6")) Nothing])
+                it "multiply" $ do 
+                    let initial = [ T.Select ]
+                        expr = [ five, T.Asterisk, six ]
+                        end = []
+                    parse (initial <> expr <> end)
+                        `shouldBe` ( columns $ 
+                            [ S.Column (multiply (number "5") (number "6")) Nothing])
+                it "equals" $ do 
+                    let initial = [ T.Select ]
+                        expr = [ five, T.Equals, six ]
+                        end = []
+                    parse (initial <> expr <> end)
+                        `shouldBe` ( columns $ 
+                            [ S.Column (equals (number "5") (number "6")) Nothing])
+                it "not equals" $ do 
+                    let initial = [ T.Select ]
+                        expr = [ five, T.NotEquals, six ]
+                        end = []
+                    parse (initial <> expr <> end)
+                        `shouldBe` ( columns $ 
+                            [ S.Column (notEquals (number "5") (number "6")) Nothing])
+                it "<" $ do 
+                    let initial = [ T.Select ]
+                        expr = [ five, T.LT, six ]
+                        end = []
+                    parse (initial <> expr <> end)
+                        `shouldBe` ( columns $ 
+                            [ S.Column (lessThan (number "5") (number "6")) Nothing])
+                it "<=" $ do 
+                    let initial = [ T.Select ]
+                        expr = [ five, T.LTE, six ]
+                        end = []
+                    parse (initial <> expr <> end)
+                        `shouldBe` ( columns $ 
+                            [ S.Column (lessThanOrEquals (number "5") (number "6")) Nothing])
+                it "> " $ do 
+                    let initial = [ T.Select ]
+                        expr = [ five, T.GT, six ]
+                        end = []
+                    parse (initial <> expr <> end)
+                        `shouldBe` ( columns $ 
+                            [ S.Column (greaterThan (number "5") (number "6")) Nothing])
+                it ">=" $ do 
+                    let initial = [ T.Select ]
+                        expr = [ five, T.GTE, six ]
+                        end = []
+                    parse (initial <> expr <> end)
+                        `shouldBe` ( columns $ 
+                            [ S.Column (greaterThanOrEquals (number "5") (number "6")) Nothing])
+                it "and" $ do 
+                    let initial = [ T.Select ]
+                        expr = [ five, T.And, six ]
+                        end = []
+                    parse (initial <> expr <> end)
+                        `shouldBe` ( columns $ 
+                            [ S.Column (E.and (number "5") (number "6")) Nothing])
+                it "or" $ do 
+                    let initial = [ T.Select ]
+                        expr = [ five, T.Or, six ]
+                        end = []
+                    parse (initial <> expr <> end)
+                        `shouldBe` ( columns $ 
+                            [ S.Column (E.or (number "5") (number "6")) Nothing])
+                it "not" $ do 
+                    let initial = [ T.Select ]
+                        expr = [ T.Not, six ]
+                        end = []
+                    parse (initial <> expr <> end)
+                        `shouldBe` ( columns $ 
+                            [ S.Column (E.not (number "6")) Nothing])
+                it "neg" $ do 
+                    let initial = [ T.Select ]
+                        expr = [ T.Minus, six ]
+                        end = []
+                    parse (initial <> expr <> end)
+                        `shouldBe` ( columns $ 
+                            [ S.Column (neg (number "6")) Nothing])
             describe "multiple" $ do 
-                it "addition and division" $ do 
-                    pending
-
+                let five = T.Constant $ T.Integer "5"
+                    six = T.Constant $ T.Integer "6"
+                    seven = T.Constant $ T.Integer "7"
+                    nFive = number "5"
+                    nSix = number "6"
+                    nSeven = number "7"
+                describe "arithmetic" $ do 
+                    it "+ -" $ do
+                        let initial = [T.Select]
+                            expr = [ five, T.Plus, six, T.Minus, seven ]
+                        parse (initial <> expr)
+                            `shouldBe` ( columns $ 
+                            [ S.Column (minus (plus nFive nSix) nSeven) Nothing])
+                    it "* /" $ do
+                        let initial = [T.Select]
+                            expr = [ five, T.Asterisk, six, T.FloatDivide, seven ]
+                        parse (initial <> expr)
+                            `shouldBe` ( columns $ 
+                            [ S.Column (divide (multiply nFive nSix) nSeven) Nothing])
+                    it "+ /" $ do
+                        let initial = [T.Select]
+                            expr = [ five, T.Plus, six, T.FloatDivide, seven ]
+                        parse (initial <> expr)
+                            `shouldBe` ( columns $ 
+                            [ S.Column (plus nFive (divide nSix nSeven) ) Nothing])
         describe "nested functions" $ do 
             it "two functions" $ do 
                 pending
 
+
 columns :: [S.Column] -> S.Query 
 columns = S.Select . S.Columns
 
-plus :: S.Op -> S.Op -> S.Expr
-plus op1 op2 = S.Operator $ S.Plus op1 op2
-
-minus :: S.Op -> S.Op -> S.Expr
-minus op1 op2 = S.Operator $ S.Minus op1 op2
-
-boolean :: S.BooleanType -> S.Expr
-boolean = S.Constant . S.Boolean
-
-true :: S.Expr 
-true = boolean S.TrueVal
-
-false :: S.Expr
-false = boolean S.FalseVal
-
-null :: S.Expr
-null = boolean S.Null
-
-str :: String -> S.Expr
-str = S.Constant . S.String
-
-number :: String -> S.Expr
-number = S.Constant . S.Number
