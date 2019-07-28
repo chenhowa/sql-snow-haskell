@@ -238,8 +238,23 @@ spec = do
                 parse (initial <> expr) `shouldBe` (columns $ 
                     [ S.Column (S.Function "floor" [S.Function "Count" [S.Identifier "name"]]) Nothing])
 
+    describe "from" $ do 
+        describe "one table" $ do 
+            it "no alias" $ do 
+                let expr = [ T.From, tid "incident"]
+                parse expr `shouldBe` (S.From [ S.Table "incident" Nothing])
+            it "alias" $ do 
+                let expr = [ T.From, tid "incident", tid "I"]
+                parse expr `shouldBe` (S.From [ S.Table "incident" $ Just "I"])
+
+                let expr2 = [ T.From, tid "incident", T.As, tid "I"]
+                parse expr2 `shouldBe` (S.From [ S.Table "incident" $ Just "I"])
+
 columns :: [S.Column] -> S.Query 
 columns = S.Select . S.Columns
 
 tid :: String -> T.Token
 tid str = T.Identifier str
+
+sid :: String -> S.Expr
+sid str = S.Identifier str
