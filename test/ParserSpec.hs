@@ -233,9 +233,13 @@ spec = do
                             [ S.Column (plus nFive (divide nSix nSeven) ) Nothing])
         describe "nested functions" $ do 
             it "two functions" $ do 
-                pending
-
+                let initial = [T.Select]
+                    expr = [ tid "floor", T.LeftParen, tid "Count", T.LeftParen, tid "name", T.RightParen, T.RightParen]
+                parse (initial <> expr) `shouldBe` (columns $ 
+                    [ S.Column (S.Function "floor" [S.Function "Count" [S.Identifier "name"]]) Nothing])
 
 columns :: [S.Column] -> S.Query 
 columns = S.Select . S.Columns
 
+tid :: String -> T.Token
+tid str = T.Identifier str
