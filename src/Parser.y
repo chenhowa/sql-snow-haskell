@@ -57,12 +57,12 @@ import Lexer.Tokens as T
     ','                         { T.Comma }
     bc                          { T.BlockComment $$ }
     dotwalk                     { T.Dotwalk $$ }
-    integer                     { T.Constant (T.Integer $$) }
-    float                       { T.Constant (T.Float $$) }
-    string                      { T.Constant (T.String $$) }
-    true                        { T.Constant (T.Boolean T.TrueVal) }
-    false                       { T.Constant (T.Boolean T.FalseVal) }
-    null                        { T.Constant (T.Boolean T.Null ) }
+    integer                     { (T.Integer $$) }
+    float                       { (T.Float $$) }
+    string                      { (T.String $$) }
+    true                        { (T.TrueVal) }
+    false                       { (T.FalseVal) }
+    null                        { (T.Null ) }
 
 %left or
 %left and

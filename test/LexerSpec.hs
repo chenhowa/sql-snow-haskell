@@ -130,23 +130,23 @@ spec = do
         describe "constant" $ do 
             describe "boolean" $ do 
                 it "true" $ do 
-                    L.alexScanTokens "TRUE" `shouldBe` [Constant $ Boolean TrueVal]
-                    L.alexScanTokens "true" `shouldBe` [Constant $ Boolean TrueVal]
+                    L.alexScanTokens "TRUE" `shouldBe` [TrueVal]
+                    L.alexScanTokens "true" `shouldBe` [TrueVal]
                 it "false" $ do 
-                    L.alexScanTokens "FALSE" `shouldBe` [Constant $ Boolean FalseVal]
-                    L.alexScanTokens "false" `shouldBe` [Constant $ Boolean FalseVal]
+                    L.alexScanTokens "FALSE" `shouldBe` [FalseVal]
+                    L.alexScanTokens "false" `shouldBe` [FalseVal]
                 it "null" $ do 
-                    L.alexScanTokens "NULL" `shouldBe` [Constant $ Boolean Null]
-                    L.alexScanTokens "null" `shouldBe` [Constant $ Boolean Null]
+                    L.alexScanTokens "NULL" `shouldBe` [Null]
+                    L.alexScanTokens "null" `shouldBe` [Null]
             it "string" $ do 
-                L.alexScanTokens "\"What\"" `shouldBe` [Constant $ String "What"]
-                L.alexScanTokens "\'What\'" `shouldBe` [Constant $ String "What"]
+                L.alexScanTokens "\"What\"" `shouldBe` [String "What"]
+                L.alexScanTokens "\'What\'" `shouldBe` [String "What"]
             it "integer" $ do 
-                L.alexScanTokens "1234" `shouldBe` [Constant $ Integer "1234" ]
-                L.alexScanTokens "0034" `shouldBe` [Constant $ Integer "0034" ]
+                L.alexScanTokens "1234" `shouldBe` [Integer "1234" ]
+                L.alexScanTokens "0034" `shouldBe` [Integer "0034" ]
             it "float" $ do
-                L.alexScanTokens "1234.6" `shouldBe` [Constant $ Float "1234.6" ]
-                L.alexScanTokens "0034.00700" `shouldBe` [Constant $ Float "0034.00700" ]
+                L.alexScanTokens "1234.6" `shouldBe` [Float "1234.6" ]
+                L.alexScanTokens "0034.00700" `shouldBe` [Float "0034.00700" ]
 
     it "validate maximum munch" $ do 
         L.alexScanTokens "descending" `shouldBe` [ Identifier "descending" ]

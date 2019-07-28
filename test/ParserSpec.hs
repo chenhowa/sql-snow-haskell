@@ -62,7 +62,7 @@ spec = do
                         T.Comma, T.Identifier "problem", T.As, T.Identifier "P"]
                     `shouldBe` from [Table "problem" $ Just "P", Table "incident" $ Just "In"]
         it "with limit" $ do 
-            let expr = [ T.Select, T.Asterisk, T.From, tid "incident", T.Limit, T.Constant $ T.Integer "5"]
+            let expr = [ T.Select, T.Asterisk, T.From, tid "incident", T.Limit, T.Integer "5"]
                 expected = limit [ S.Table "incident" Nothing ] "5"
             parse expr `shouldBe` expected
 
@@ -78,36 +78,36 @@ spec = do
         describe "constant" $ do 
             it "boolean" $ do 
                 let initial = [ T.Select ]
-                    expr = [ T.Constant $ T.Boolean T.TrueVal ]
+                    expr = [ T.TrueVal ]
                     end = []
                 parse (initial <> expr <> end)
                     `shouldBe` ( columns 
                         [ S.Column (S.Constant $ S.Boolean S.TrueVal) Nothing ] )
             it "string" $ do 
                 let initial = [ T.Select ]
-                    expr = [ T.Constant $ T.String "hey" ]
+                    expr = [ T.String "hey" ]
                     end = []
                 parse (initial <> expr <> end)
                     `shouldBe` ( columns 
                         [ S.Column (S.Constant $ S.String "hey") Nothing ] )
             it "integer" $ do 
                 let initial = [ T.Select ]
-                    expr = [ T.Constant $ T.Integer "5" ]
+                    expr = [ T.Integer "5" ]
                     end = []
                 parse (initial <> expr <> end)
                     `shouldBe` ( columns 
                         [ S.Column (S.Constant $ S.Number "5") Nothing ] )
             it "float" $ do 
                 let initial = [ T.Select ]
-                    expr = [ T.Constant $ T.Float "5.0" ]
+                    expr = [ T.Float "5.0" ]
                     end = []
                 parse (initial <> expr <> end)
                     `shouldBe` ( columns 
                         [ S.Column (S.Constant $ S.Number "5.0") Nothing ] )
         describe "operators" $ do 
             describe "single" $ do 
-                let five = T.Constant $ T.Integer "5"
-                    six = T.Constant $ T.Integer "6"
+                let five = T.Integer "5"
+                    six = T.Integer "6"
                 it "addition" $ do 
                     let initial = [ T.Select ]
                         expr = [ five, T.Plus, six ]
@@ -214,9 +214,9 @@ spec = do
                         `shouldBe` ( columns $ 
                             [ S.Column (neg (number "6")) Nothing])
             describe "multiple" $ do 
-                let five = T.Constant $ T.Integer "5"
-                    six = T.Constant $ T.Integer "6"
-                    seven = T.Constant $ T.Integer "7"
+                let five = T.Integer "5"
+                    six = T.Integer "6"
+                    seven = T.Integer "7"
                     nFive = number "5"
                     nSix = number "6"
                     nSeven = number "7"
@@ -248,8 +248,8 @@ spec = do
     describe "where" $ do 
         it "expression" $ do 
             let expr = [ T.Select, T.Asterisk, T.From, tid "incident", T.Where, five, T.LT, six]
-                five = T.Constant $ T.Integer "5"
-                six = T.Constant $ T.Integer "6"
+                five = T.Integer "5"
+                six = T.Integer "6"
                 nFive = number "5"
                 nSix = number "6"
             parse expr `shouldBe` (where_ [S.Table "incident" Nothing] (lessThan nFive nSix))
@@ -264,7 +264,7 @@ spec = do
     describe "having" $ do 
         it "expression" $ do 
             let expr = [ T.Select, T.Asterisk, T.From, tid "incident", T.GroupBy, tid "category", 
-                                T.Having, tid "COUNT", T.LeftParen, T.Constant $ T.Integer "5", T.RightParen]
+                                T.Having, tid "COUNT", T.LeftParen, T.Integer "5", T.RightParen]
                 expected =  having [S.Table "incident" Nothing ] ["category"] (S.Function "COUNT" [five]) 
                 five = number "5"
             parse expr `shouldBe` expected

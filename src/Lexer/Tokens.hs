@@ -3,17 +3,17 @@ module Lexer.Tokens where
 import Prelude hiding (Right, Left)
 
 data Token
-    = Select
-    | From
-    | Where 
-    | GroupBy
-    | Having
+    = Select --addressed in parser
+    | From --addressed in parser
+    | Where  --addressed in parser
+    | GroupBy --addressed in parser
+    | Having --addressed in parser
     | In 
-    | Distinct 
-    | Limit 
-    | OrderBy
-    | Ascending 
-    | Descending 
+    | Distinct  -- PARTIAL
+    | Limit  --addressed in parser
+    | OrderBy --addressed in parser
+    | Ascending  --addressed in parser
+    | Descending  --addressed in parser
     | Union 
     | Intersect 
     | All 
@@ -24,39 +24,31 @@ data Token
     | Natural 
     | Join 
     | On 
-    | Plus 
-    | Minus 
-    | Asterisk 
-    | FloatDivide 
-    | Modulo 
-    | Equals 
-    | NotEquals 
-    | LT 
-    | LTE 
-    | GT 
-    | GTE 
-    | Not 
-    | And 
-    | Or 
-    | As 
-    | Identifier String
-    | Dotwalk String
-    | RightParen 
-    | LeftParen 
-    | Comma 
+    | Plus  --addressed in parser
+    | Minus  --addressed in parser
+    | Asterisk  --addressed in parser
+    | FloatDivide  --addressed in parser
+    | Modulo  --addressed in parser
+    | Equals  --addressed in parser
+    | NotEquals  --addressed in parser
+    | LT  --addressed in parser
+    | LTE  --addressed in parser
+    | GT  --addressed in parser
+    | GTE  --addressed in parser
+    | Not  --addressed in parser
+    | And  --addressed in parser
+    | Or  --addressed in parser
+    | As  --addressed in parser
+    | Identifier String --addressed in parser
+    | Dotwalk String --addressed in parser
+    | RightParen  --addressed in parser
+    | LeftParen  --addressed in parser
+    | Comma  --addressed in parser
     | BlockComment String
-    | Constant ConstantType
-    deriving (Eq, Show)
-
-data ConstantType 
-    = Integer String
-    | Float String 
-    | String String 
-    | Boolean BooleanType
-    deriving (Eq, Show)
-
-data BooleanType
-    = TrueVal
+    | Integer String
+    | Float String
+    | String String
+    | TrueVal
     | FalseVal
     | Null
     deriving (Eq, Show)

@@ -66,13 +66,13 @@ tokens :-
     AND | and                                       { \s -> T.And }
     OR | or                                         { \s -> T.Or }
     AS | as                                         { \s -> T.As }
-    TRUE | true                                     { \s -> T.Constant $ T.Boolean T.TrueVal }
-    FALSE | false                                   { \s -> T.Constant $ T.Boolean T.FalseVal  }
-    NULL | null                                     { \s -> T.Constant $ T.Boolean T.Null  }
+    TRUE | true                                     { \s -> T.TrueVal }
+    FALSE | false                                   { \s -> T.FalseVal  }
+    NULL | null                                     { \s -> T.Null  }
     @blockcomment                                   { \s -> T.BlockComment $ (removeFirstLast 2 s) }
-    @integer                                        { \s -> T.Constant $ T.Integer s }
-    @float                                          { \s -> T.Constant $ T.Float s }
-    @string                                         { \s -> T.Constant $ T.String (removeFirstLast 1 s) }
+    @integer                                        { \s -> T.Integer s }
+    @float                                          { \s -> T.Float s }
+    @string                                         { \s -> T.String (removeFirstLast 1 s) }
     @dotwalk                                        { \s -> T.Dotwalk s }
     @ident                                          { \s -> T.Identifier s }
     
