@@ -81,11 +81,15 @@ type Op = Expr
 {- FROM Clause -}
 
 data From
-    = From [ Table ] (Maybe Where) (Maybe GroupBy) (Maybe OrderBy)
+    = From [ Table ] (Maybe Where) (Maybe GroupBy) (Maybe OrderBy) (Maybe Limit)
     deriving (Eq, Show)
 
 data Table 
     = Table String Alias
+    deriving (Eq, Show)
+
+data Limit
+    = Limit String
     deriving (Eq, Show)
 
 {- WHERE Clause -}

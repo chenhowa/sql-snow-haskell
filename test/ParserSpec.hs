@@ -57,6 +57,10 @@ spec = do
                 parse [ T.Select, T.Asterisk, T.From, T.Identifier "incident", T.As, T.Identifier "In",
                         T.Comma, T.Identifier "problem", T.As, T.Identifier "P"]
                     `shouldBe` from [Table "problem" $ Just "P", Table "incident" $ Just "In"]
+        it "with limit" $ do 
+            let expr = [ T.Select, T.Asterisk, T.From, tid "incident", T.Limit, T.Constant $ T.Integer "5"]
+                expected = limit [ S.Table "incident" Nothing ] "5"
+            parse expr `shouldBe` expected
 
     describe "expression" $ do 
         describe "function with args" $ do 
@@ -267,19 +271,22 @@ spec = do
             parse expr `shouldBe` expected
 
 orderBy :: [S.Table] -> [String] -> Maybe S.Direction -> S.Query 
-orderBy ts ids dir = S.Select S.Wildcard $ Just (S.From ts Nothing Nothing $ Just (S.OrderBy ids Nothing))
+orderBy ts ids dir = S.Select S.Wildcard $ Just (S.From ts Nothing Nothing (Just (S.OrderBy ids Nothing)) Nothing)
 
 having :: [ S.Table ] -> [ String ] -> S.Expr -> S.Query
-having ts ids expr = S.Select S.Wildcard $ Just (S.From ts Nothing (Just $ S.GroupBy ids (Just $ S.Having expr)) Nothing)
+having ts ids expr = S.Select S.Wildcard $ Just (S.From ts Nothing (Just $ S.GroupBy ids (Just $ S.Having expr)) Nothing Nothing)
 
 groupBy :: [ S.Table ] -> [ String ] -> S.Query
-groupBy ts ids = S.Select S.Wildcard $ Just (S.From ts Nothing (Just $ S.GroupBy ids Nothing) Nothing)
+groupBy ts ids = S.Select S.Wildcard $ Just (S.From ts Nothing (Just $ S.GroupBy ids Nothing) Nothing Nothing)
 
 where_ :: [ S.Table ] -> Expr -> S.Query 
-where_ ts expr = S.Select S.Wildcard $ Just (S.From ts (Just $ S.Where expr) Nothing Nothing)
+where_ ts expr = S.Select S.Wildcard $ Just (S.From ts (Just $ S.Where expr) Nothing Nothing Nothing)
+
+limit :: [S.Table] -> String -> S.Query 
+limit tables lim = S.Select S.Wildcard (Just (S.From tables Nothing Nothing Nothing (Just $ S.Limit lim)))
 
 from :: [ S.Table ] -> S.Query
-from tables = S.Select S.Wildcard (Just (S.From tables Nothing Nothing Nothing))
+from tables = S.Select S.Wildcard (Just (S.From tables Nothing Nothing Nothing Nothing))
 
 columns :: [S.Column] -> S.Query 
 columns cols = (S.Select ( S.Columns cols) Nothing)
