@@ -113,7 +113,18 @@ mkFromClause ts w g o l = FromClause
 
 data Table 
     = Table String Alias
+    | Join JoinType Table Table (Maybe OnColumns)
     deriving (Eq, Show)
+
+data JoinType 
+    = Inner
+    | LeftOuter
+    | RightOuter
+    | FullOuter
+    | Natural
+    deriving (Eq, Show)
+
+type OnColumns = (ID, ID)
 
 type Limit = String
 

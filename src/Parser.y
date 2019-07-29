@@ -188,6 +188,18 @@ Tables          :: { [ S.Table ] }
 Table           :: { S.Table }  
                 : identifier                    { S.Table $1 Nothing }
                 | identifier Alias              { S.Table $1 $2 }
+                | Table natural join Table      { S.Join S.Natural $1 $4 Nothing }
+                | Table Join Table On           { S.Join $2 $1 $3 $4 }
+
+Join            :: { S.JoinType }           
+                : inner join                    { S.Inner }
+                | left join                     { S.LeftOuter }
+                | right join                    { S.RightOuter }
+                | outer join                    { S.FullOuter }
+
+On              :: { Maybe S.OnColumns }
+                : on identifier '=' identifier      { Just ($2, $4) }
+                | on dotwalk '=' dotwalk            { Just ($2, $4) }
 
 Limit           :: { Maybe S.Limit }                  
                 : {- empty -}                   { Nothing }

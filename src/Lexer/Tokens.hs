@@ -15,10 +15,10 @@ data Token
     | OrderBy --addressed in parser
     | Ascending  --addressed in parser
     | Descending  --addressed in parser
-    | Union 
-    | Intersect 
+    | Union        -- addresesed in parser
+    | Intersect    -- addressed in parser
     | Any -- addressed in parser
-    | All  -- !! PARTIAL (additional use with Union)
+    | All  -- addressed in parser
     | Exists -- addressed in parser
     | Left 
     | Right 
