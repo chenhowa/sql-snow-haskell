@@ -8,15 +8,18 @@ data Token
     | Where  --addressed in parser
     | GroupBy --addressed in parser
     | Having --addressed in parser
-    | In 
-    | Distinct  -- PARTIAL
+    | In     -- addressed in parser
+    | NotIn -- addressed in parser
+    | Distinct  -- !!!!! PARTIAL (additional use with aggregate functions)
     | Limit  --addressed in parser
     | OrderBy --addressed in parser
     | Ascending  --addressed in parser
     | Descending  --addressed in parser
     | Union 
     | Intersect 
-    | All 
+    | Any -- addressed in parser
+    | All  -- !! PARTIAL (additional use with Union)
+    | Exists
     | Left 
     | Right 
     | Inner 

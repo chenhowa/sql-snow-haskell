@@ -21,6 +21,7 @@ import Lexer.Tokens as T
     groupBy                     { T.GroupBy }
     having                      { T.Having }
     in                          { T.In }
+    notIn                       { T.NotIn }
     distinct                    { T.Distinct }
     limit                       { T.Limit }
     orderBy                     { T.OrderBy }
@@ -29,6 +30,7 @@ import Lexer.Tokens as T
     union                       { T.Union }
     intersect                   { T.Intersect }
     all                         { T.All }
+    any                         { T.Any }
     left                        { T.Left }
     right                       { T.Right }
     inner                       { T.Inner }
@@ -81,6 +83,9 @@ Query           :: { S.Query }
                 | select SType From                   { S.Select $2 (Just $3) S.All }
                 | select distinct SType                { S.Select $3 Nothing S.Distinct }
                 | select distinct SType From           { S.Select $3 (Just $4) S.Distinct }
+
+SubQuery        :: { S.Query } 
+                : '(' Query ')'                         { $2 }
 
 -- Common Constructs
 Alias           :: { S.Alias }                    -- Maybe String
@@ -178,7 +183,38 @@ Limit           :: { Maybe S.Limit }
 -- WHERE Clause 
 Where           :: { Maybe S.Where }
                 : {- empty -}                   { Nothing }
-                | where Expr                    { Just $2 }
+                | where WhereExpr               { Just $2 }
+
+WhereExpr      :: { S.Expr }
+                : Primitive                     { S.Constant $1 }
+                | identifier                    { S.Identifier $1 }
+                | dotwalk                       { S.Identifier $1 }
+                | identifier '(' Args ')'       { S.Function $1 $3 }
+                | WhereOperator                 { S.Operator $1 }
+                | any SubQuery                  { S.SubQuery S.QAny $2 }
+                | all SubQuery                  { S.SubQuery S.QAll $2 }
+                | '(' WhereExpr ')'             { $2 }
+
+WhereOperator   :: { S.OperatorType }
+                : WhereExpr in '(' Query ')'         { S.In $1 ( S.Rows $4) }
+                | WhereExpr in '(' Args ')'          { S.In $1 (S.Row $4) }
+                | WhereExpr notIn '(' Query ')'      { S.NotIn $1 (S.Rows $4) }
+                | WhereExpr notIn '(' Args ')'       { S.NotIn $1 (S.Row $4) }
+                | WhereExpr '+' WhereExpr            { S.Plus $1 $3 }
+                | WhereExpr '-' WhereExpr            { S.Minus $1 $3 }
+                | WhereExpr '*' WhereExpr            { S.Multiply $1 $3 }
+                | WhereExpr '/' WhereExpr            { S.FloatDivide $1 $3 }
+                | WhereExpr '%' WhereExpr            { S.Modulo $1 $3 }
+                | WhereExpr '=' WhereExpr            { S.Equals $1 $3 }
+                | WhereExpr '!=' WhereExpr           { S.NotEquals $1 $3 }
+                | WhereExpr '<' WhereExpr            { S.LT $1 $3 }
+                | WhereExpr '<=' WhereExpr           { S.LTE $1 $3 }
+                | WhereExpr '>' WhereExpr            { S.GT $1 $3 }
+                | WhereExpr '>=' WhereExpr           { S.GTE $1 $3 }
+                | WhereExpr and WhereExpr            { S.And $1 $3 }
+                | WhereExpr or WhereExpr             { S.Or $1 $3 }
+                | not WhereExpr                      { S.Not $2 }
+                | '-' WhereExpr %prec NEG            { S.Neg $2 }
 
 -- GROUP BY Clause 
 GroupBy         :: { Maybe S.GroupBy }

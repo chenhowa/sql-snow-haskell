@@ -47,6 +47,7 @@ tokens :-
     "GROUP" $white+ "BY" | "group" $white+ "by"     { \s -> T.GroupBy }
     HAVING | having                                 { \s -> T.Having }
     IN | in                                         { \s -> T.In }
+    "NOT" $white+ "IN" | "not" $white+ "in"         { \s -> T.NotIn } 
     DISTINCT | distinct                             { \s -> T.Distinct }
     LIMIT | limit                                   { \s -> T.Limit }
     "ORDER" $white+ "BY" | "order" $white+ "by"     { \s -> T.OrderBy }
@@ -55,6 +56,8 @@ tokens :-
     UNION | union                                   { \s -> T.Union }
     INTERSECT | intersect                           { \s -> T.Intersect }
     ALL | all                                       { \s -> T.All }
+    ANY | any                                       { \s -> T.Any }
+    EXISTS | exists                                 { \s -> T.Exists }
     LEFT | left                                     { \s -> T.Left }
     RIGHT | right                                   { \s -> T.Right }
     INNER | inner                                   { \s -> T.Inner }

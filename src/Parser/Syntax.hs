@@ -50,12 +50,13 @@ data Expr
     | Constant PrimitiveType 
     | Function ID Args
     | Operator OperatorType
+    | SubQuery Quantity Query
     deriving (Eq, Show)
 
-{-data Arg
-    = Col ID
-    | Val Expr
-    deriving (Eq, Show)-}
+data Quantity 
+    = QAll 
+    | QAny
+    deriving (Eq, Show)
 
 type Args = [ Arg ]
 type Arg = Expr
@@ -77,10 +78,15 @@ data OperatorType
     | Or Op Op
     | Not Op
     | Neg Op
+    | In Op Values
+    | NotIn Op Values
     deriving (Eq, Show)
 
-
 type Op = Expr
+data Values
+    = Row [Expr]
+    | Rows Query
+    deriving (Eq, Show)
 
 {- FROM Clause -}
 

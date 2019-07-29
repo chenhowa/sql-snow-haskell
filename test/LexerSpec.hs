@@ -28,8 +28,18 @@ spec = do
         it "in" $ do 
             L.alexScanTokens "IN" `shouldBe` [In]
             L.alexScanTokens "in" `shouldBe` [In]
-
-
+        it "not in" $ do 
+            L.alexScanTokens "NOT IN" `shouldBe` [NotIn]
+            L.alexScanTokens "not in" `shouldBe` [NotIn]
+        it "all" $ do 
+            L.alexScanTokens "ALL" `shouldBe` [All]
+            L.alexScanTokens "all" `shouldBe` [All]
+        it "any" $ do 
+            L.alexScanTokens "ANY" `shouldBe` [Any]
+            L.alexScanTokens "any" `shouldBe` [Any]
+        it "exists" $ do 
+            L.alexScanTokens "EXISTS" `shouldBe` [Exists]
+            L.alexScanTokens "exists" `shouldBe` [Exists]
         it "distinct" $ do 
             L.alexScanTokens "DISTINCT" `shouldBe` [Distinct]
             L.alexScanTokens "distinct" `shouldBe` [Distinct]
