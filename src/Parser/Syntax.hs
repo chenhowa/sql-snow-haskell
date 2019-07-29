@@ -2,6 +2,8 @@ module Parser.Syntax where
 
 data Query 
     = Select SelectType (Maybe FromClause) Unique
+    | Union Unique Query Query
+    | Intersect Unique Query Query
     deriving (Eq, Show)
 
 {- PRIMITIVES -}

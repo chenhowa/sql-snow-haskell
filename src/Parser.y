@@ -84,9 +84,21 @@ Query           :: { S.Query }
                 | select SType From                   { S.Select $2 (Just $3) S.All }
                 | select distinct SType                { S.Select $3 Nothing S.Distinct }
                 | select distinct SType From           { S.Select $3 (Just $4) S.Distinct }
+                | SubQuery Union SubQuery               { $2 $1 $3}
+                | SubQuery Intersect SubQuery          { $2 $1 $3}
 
 SubQuery        :: { S.Query } 
                 : '(' Query ')'                         { $2 }
+
+Union           :: { S.Query -> S.Query -> S.Query }
+                : union                                 { \q1 q2 -> S.Union S.Distinct q1 q2 }
+                | union all                             { \q1 q2 -> S.Union S.All q1 q2 }
+                | union distinct                        { \q1 q2 -> S.Union S.Distinct q1 q2 }
+
+Intersect       :: { S.Query -> S.Query -> S.Query }
+                : intersect                             { \q1 q2 -> S.Intersect S.Distinct q1 q2 }
+                | intersect all                         { \q1 q2 -> S.Intersect S.All q1 q2 }
+                | intersect distinct                    { \q1 q2 -> S.Intersect S.All q1 q2 }
 
 -- Common Constructs
 Alias           :: { S.Alias }                    -- Maybe String

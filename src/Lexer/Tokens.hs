@@ -19,7 +19,7 @@ data Token
     | Intersect 
     | Any -- addressed in parser
     | All  -- !! PARTIAL (additional use with Union)
-    | Exists
+    | Exists -- addressed in parser
     | Left 
     | Right 
     | Inner 

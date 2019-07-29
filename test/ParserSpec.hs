@@ -10,6 +10,32 @@ import Parser.Expressions as E
 
 spec :: Spec
 spec = do 
+    describe "union" $ do
+        it "no modifier" $ do 
+            let expr = [ T.LeftParen, T.Select, T.Asterisk, T.RightParen,  
+                            T.Union, 
+                            T.LeftParen, T.Select, T.Asterisk, T.RightParen]
+                expected = S.Union S.Distinct selectWildcard selectWildcard
+            parse expr `shouldBe` expected
+        it "all" $ do
+            let expr = [ T.LeftParen, T.Select, T.Asterisk, T.RightParen,  
+                            T.Union, T.All,
+                            T.LeftParen, T.Select, T.Asterisk, T.RightParen]
+                expected = S.Union S.All selectWildcard selectWildcard
+            parse expr `shouldBe` expected
+    describe "intersect" $ do
+        it "no modifier" $ do 
+            let expr = [ T.LeftParen, T.Select, T.Asterisk, T.RightParen,  
+                            T.Intersect, 
+                            T.LeftParen, T.Select, T.Asterisk, T.RightParen]
+                expected = S.Intersect S.Distinct selectWildcard selectWildcard
+            parse expr `shouldBe` expected
+        it "all" $ do
+            let expr = [ T.LeftParen, T.Select, T.Asterisk, T.RightParen,  
+                            T.Intersect, T.All,
+                            T.LeftParen, T.Select, T.Asterisk, T.RightParen]
+                expected = S.Intersect S.All selectWildcard selectWildcard
+            parse expr `shouldBe` expected
     describe "select" $ do 
         it "wildcard" $ do 
             parse [ T.Select, T.Asterisk ] `shouldBe` selectWildcard
