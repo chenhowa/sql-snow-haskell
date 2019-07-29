@@ -15,25 +15,25 @@ spec = do
             parse [ T.Select, T.Asterisk ] `shouldBe` selectWildcard
         describe "one column" $ do
             it "no alias" $ do 
-                parse [ T.Select, T.Identifier "what" ] `shouldBe` 
-                        (columns [Column (S.Identifier "what") Nothing])
+                parse [ T.Select, tid "what" ] `shouldBe` 
+                        (columns [Column (sid "what") Nothing])
             it "alias" $ do 
-                parse [ T.Select, T.Identifier "what", T.As, T.Identifier "W" ] `shouldBe` 
-                        (columns [Column (S.Identifier "what") $ Just "W"])
-                parse [ T.Select, T.Identifier "what", T.Identifier "W" ] `shouldBe` 
-                        (columns [Column (S.Identifier "what") $ Just "W"])
+                parse [ T.Select, tid "what", T.As, tid "W" ] `shouldBe` 
+                        (columns [Column (sid "what") $ Just "W"])
+                parse [ T.Select, tid "what", tid "W" ] `shouldBe` 
+                        (columns [Column (sid "what") $ Just "W"])
         describe "multiple columns" $ do 
             it "no alias" $ do 
-                parse [ T.Select, T.Identifier "what", T.Comma, T.Identifier "why" ] `shouldBe` 
-                        (columns [Column (S.Identifier "why") Nothing, Column (S.Identifier "what") Nothing])
+                parse [ T.Select, tid "what", T.Comma, tid "why" ] `shouldBe` 
+                        (columns [Column (sid "why") Nothing, Column (sid "what") Nothing])
             it "alias" $ do 
-                parse [ T.Select, T.Identifier "what", 
-                                T.Identifier "W", T.Comma, 
-                                T.Identifier "why", T.Identifier "Y" ] `shouldBe` 
-                        (columns [Column (S.Identifier "why") $ Just "Y", Column (S.Identifier "what") $ Just "W" ])
-                parse [ T.Select, T.Identifier "what", T.As, T.Identifier "W", T.Comma, 
-                                T.Identifier "why", T.As, T.Identifier "Y" ] `shouldBe` 
-                        (columns [Column (S.Identifier "why") $ Just "Y", Column (S.Identifier "what") $ Just "W" ])
+                parse [ T.Select, tid "what", 
+                                tid "W", T.Comma, 
+                                tid "why", tid "Y" ] `shouldBe` 
+                        (columns [Column (sid "why") $ Just "Y", Column (sid "what") $ Just "W" ])
+                parse [ T.Select, tid "what", T.As, tid "W", T.Comma, 
+                                tid "why", T.As, tid "Y" ] `shouldBe` 
+                        (columns [Column (sid "why") $ Just "Y", Column (sid "what") $ Just "W" ])
         it "distinct" $ do 
             let expr = [ T.Select, T.Distinct, T.Asterisk]
                 expected = S.Select S.Wildcard Nothing S.Distinct
@@ -42,24 +42,24 @@ spec = do
     describe "from" $ do 
         describe "one table" $ do 
             it "no alias" $ do 
-                parse [ T.Select, T.Asterisk, T.From, T.Identifier "incident"]
+                parse [ T.Select, T.Asterisk, T.From, tid "incident"]
                     `shouldBe` from [Table "incident" Nothing]
             it "alias" $ do 
-                parse [ T.Select, T.Asterisk, T.From, T.Identifier "incident", T.Identifier "In"]
+                parse [ T.Select, T.Asterisk, T.From, tid "incident", tid "In"]
                     `shouldBe` from [Table "incident" $ Just "In"]
-                parse [ T.Select, T.Asterisk, T.From, T.Identifier "incident", T.As, T.Identifier "In"]
+                parse [ T.Select, T.Asterisk, T.From, tid "incident", T.As, tid "In"]
                     `shouldBe` from [Table "incident" $ Just "In"]
         describe "multiple tables" $ do
             it "no alias" $ do 
-                parse [ T.Select, T.Asterisk, T.From, T.Identifier "incident", 
-                    T.Comma, T.Identifier "problem"]
+                parse [ T.Select, T.Asterisk, T.From, tid "incident", 
+                    T.Comma, tid "problem"]
                     `shouldBe` from [Table "problem" Nothing, Table "incident" Nothing]
             it "alias" $ do 
-                parse [ T.Select, T.Asterisk, T.From, T.Identifier "incident", T.Identifier "In",
-                    T.Comma, T.Identifier "problem", T.Identifier "P"]
+                parse [ T.Select, T.Asterisk, T.From, tid "incident", tid "In",
+                    T.Comma, tid "problem", tid "P"]
                     `shouldBe` from [Table "problem" $ Just "P", Table "incident" $ Just "In"]
-                parse [ T.Select, T.Asterisk, T.From, T.Identifier "incident", T.As, T.Identifier "In",
-                        T.Comma, T.Identifier "problem", T.As, T.Identifier "P"]
+                parse [ T.Select, T.Asterisk, T.From, tid "incident", T.As, tid "In",
+                        T.Comma, tid "problem", T.As, tid "P"]
                     `shouldBe` from [Table "problem" $ Just "P", Table "incident" $ Just "In"]
         it "with limit" $ do 
             let expr = [ T.Select, T.Asterisk, T.From, tid "incident", T.Limit, T.Integer "5"]
@@ -67,14 +67,21 @@ spec = do
             parse expr `shouldBe` expected
 
     describe "expression" $ do 
+        describe "subquery" $ do 
+            it "exists" $ do 
+                let initial = [ T.Select, T.Asterisk, T.From, tid "inc", T.Where ]
+                    expr = [ T.Exists, T.LeftParen, T.Select, T.Asterisk, T.RightParen]
+                    expected = genWhere_ [S.Table "inc" Nothing ]
+                                (S.SubQuery S.Exists selectWildcard)
+                parse (initial <> expr) `shouldBe` expected
         describe "function with args" $ do 
             it "column name" $ do
-                let initial = [ T.Select, T.Identifier "COUNT", T.LeftParen]
-                    expr = [ T.Identifier "name" ]
+                let initial = [ T.Select, tid "COUNT", T.LeftParen]
+                    expr = [ tid "name" ]
                     end = [ T.RightParen ]
                 parse (initial <> expr <> end)
                     `shouldBe` ( columns 
-                        [ S.Column (S.Function "COUNT" [S.Identifier "name"]) Nothing ] )
+                        [ S.Column (S.Function "COUNT" [sid "name"]) Nothing ] )
         describe "constant" $ do 
             it "boolean" $ do 
                 let initial = [ T.Select ]
@@ -215,38 +222,38 @@ spec = do
                             [ S.Column (neg (number "6")) Nothing])
                 describe "in" $ do 
                     it "row" $ do 
-                        let initial = [ T.Select, T.Asterisk, T.From, T.Identifier "incident"]
-                            expr = [ T.Where, T.Identifier "number", T.In, T.LeftParen, T.Integer "5", T.RightParen ]
+                        let initial = [ T.Select, T.Asterisk, T.From, tid "incident"]
+                            expr = [ T.Where, tid "number", T.In, T.LeftParen, T.Integer "5", T.RightParen ]
                             expected = genWhere_ [S.Table "incident" Nothing] 
-                                            (S.Operator $ S.In (S.Identifier "number") (S.Row [number "5"]))
+                                            (S.Operator $ S.In (sid "number") (S.Row [number "5"]))
                         parse (initial <> expr) `shouldBe` expected
                     it "subquery" $ do 
-                        let initial = [ T.Select, T.Asterisk, T.From, T.Identifier "incident"]
-                            expr = [ T.Where, T.Identifier "number", T.In, T.LeftParen, T.Select, T.Asterisk, T.RightParen ]
+                        let initial = [ T.Select, T.Asterisk, T.From, tid "incident"]
+                            expr = [ T.Where, tid "number", T.In, T.LeftParen, T.Select, T.Asterisk, T.RightParen ]
                             expected = genWhere_ [S.Table "incident" Nothing] 
-                                            (S.Operator $ S.In (S.Identifier "number") (S.Rows $ selectWildcard))
+                                            (S.Operator $ S.In (sid "number") (S.Rows $ selectWildcard))
                         parse (initial <> expr) `shouldBe` expected
                 describe "not in" $ do 
                     it "row" $ do 
-                        let initial = [ T.Select, T.Asterisk, T.From, T.Identifier "incident"]
-                            expr = [ T.Where, T.Identifier "number", T.NotIn, T.LeftParen, T.Integer "5", T.RightParen ]
+                        let initial = [ T.Select, T.Asterisk, T.From, tid "incident"]
+                            expr = [ T.Where, tid "number", T.NotIn, T.LeftParen, T.Integer "5", T.RightParen ]
                             expected = genWhere_ [S.Table "incident" Nothing] 
-                                            (S.Operator $ S.NotIn (S.Identifier "number") (S.Row [number "5"]))
+                                            (S.Operator $ S.NotIn (sid "number") (S.Row [number "5"]))
                         parse (initial <> expr) `shouldBe` expected
                     it "subquery" $ do 
-                        let initial = [ T.Select, T.Asterisk, T.From, T.Identifier "incident"]
-                            expr = [ T.Where, T.Identifier "number", T.NotIn, T.LeftParen, T.Select, T.Asterisk, T.RightParen ]
+                        let initial = [ T.Select, T.Asterisk, T.From, tid "incident"]
+                            expr = [ T.Where, tid "number", T.NotIn, T.LeftParen, T.Select, T.Asterisk, T.RightParen ]
                             expected = genWhere_ [S.Table "incident" Nothing] 
-                                            (S.Operator $ S.NotIn (S.Identifier "number") (S.Rows $ selectWildcard))
+                                            (S.Operator $ S.NotIn (sid "number") (S.Rows $ selectWildcard))
                         parse (initial <> expr) `shouldBe` expected
                 it "all" $ do 
-                    let initial = [ T.Select, T.Asterisk, T.From, T.Identifier "incident"]
+                    let initial = [ T.Select, T.Asterisk, T.From, tid "incident"]
                         expr = [ T.Where, T.All, T.LeftParen, T.Select, T.Asterisk, T.RightParen ]
                         expected = genWhere_ [S.Table "incident" Nothing ]
                                             (S.SubQuery S.QAll (selectWildcard) )
                     parse (initial <> expr ) `shouldBe` expected
                 it "any" $ do 
-                    let initial = [ T.Select, T.Asterisk, T.From, T.Identifier "incident"]
+                    let initial = [ T.Select, T.Asterisk, T.From, tid "incident"]
                         expr = [ T.Where, T.Any, T.LeftParen, T.Select, T.Asterisk, T.RightParen ]
                         expected = genWhere_ [S.Table "incident" Nothing ]
                                             (S.SubQuery S.QAny (selectWildcard) )
@@ -282,7 +289,7 @@ spec = do
                 let initial = [T.Select]
                     expr = [ tid "floor", T.LeftParen, tid "Count", T.LeftParen, tid "name", T.RightParen, T.RightParen]
                 parse (initial <> expr) `shouldBe` (columns $ 
-                    [ S.Column (S.Function "floor" [S.Function "Count" [S.Identifier "name"]]) Nothing])
+                    [ S.Column (S.Function "floor" [S.Function "Count" [sid "name"]]) Nothing])
     describe "where" $ do 
         it "expression" $ do 
             let expr = [ T.Select, T.Asterisk, T.From, tid "incident", T.Where, five, T.LT, six]

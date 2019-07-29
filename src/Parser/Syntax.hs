@@ -50,12 +50,13 @@ data Expr
     | Constant PrimitiveType 
     | Function ID Args
     | Operator OperatorType
-    | SubQuery Quantity Query
+    | SubQuery Modifier Query
     deriving (Eq, Show)
 
-data Quantity 
+data Modifier 
     = QAll 
     | QAny
+    | Exists
     deriving (Eq, Show)
 
 type Args = [ Arg ]

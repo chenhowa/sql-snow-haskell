@@ -30,6 +30,7 @@ import Lexer.Tokens as T
     union                       { T.Union }
     intersect                   { T.Intersect }
     all                         { T.All }
+    exists                      { T.Exists }
     any                         { T.Any }
     left                        { T.Left }
     right                       { T.Right }
@@ -193,6 +194,7 @@ WhereExpr      :: { S.Expr }
                 | WhereOperator                 { S.Operator $1 }
                 | any SubQuery                  { S.SubQuery S.QAny $2 }
                 | all SubQuery                  { S.SubQuery S.QAll $2 }
+                | exists SubQuery               { S.SubQuery S.Exists $2}
                 | '(' WhereExpr ')'             { $2 }
 
 WhereOperator   :: { S.OperatorType }
