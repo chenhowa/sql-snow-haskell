@@ -1,6 +1,6 @@
 module CodeGen.QueryPlan where
 
-data QueryPlan 
+{- data QueryPlan 
     = Join QueryPlan QueryPlan 
     | Read Table 
     | Projection QueryPlan Columns
@@ -43,7 +43,7 @@ The dynamic programming table will have 4 columns -
 * and the cost of this plan. We keep track of interesting order columns so 
     that we can use it later -- it might be cheaper to sort earlier, 
     rather than sort later, for a later operation
--}
+-} -}
 
 
 

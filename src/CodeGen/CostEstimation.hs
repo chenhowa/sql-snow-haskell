@@ -1,5 +1,5 @@
 module CodeGen.CostEstimation where 
-
+{-j}
 import Parser.Syntax as S
 
 
@@ -7,4 +7,4 @@ import Parser.Syntax as S
 data QueryInfo = QueryInfo 
     {
 
-    }
+    }-}

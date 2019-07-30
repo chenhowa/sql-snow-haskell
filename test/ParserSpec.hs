@@ -91,6 +91,43 @@ spec = do
             let expr = [ T.Select, T.Asterisk, T.From, tid "incident", T.Limit, T.Integer "5"]
                 expected = genLimit [ S.Table "incident" Nothing ] "5"
             parse expr `shouldBe` expected
+        describe "joins" $ do 
+            it "natural" $ do 
+                let expr = [ T.Select, T.Asterisk, T.From, tid "inc", T.Natural, T.Join, tid "prob" ]
+                    expected = from [ S.Natural (table "inc") (table "prob")]
+                parse expr `shouldBe` expected
+            it "left outer" $ do 
+                let expr = [ T.Select, T.Asterisk, T.From, tid "inc", T.Left, T.Join, tid "prob", T.On, dw "inc.sys_id", T.Equals, dw "prob.first_reported" ]
+                    expected = from [ S.Join S.LeftOuter (table "inc") (table "prob") ("inc.sys_id", "prob.first_reported") ]
+                parse expr `shouldBe` expected
+            it "right outer" $ do 
+                let expr = [ T.Select, T.Asterisk, T.From, tid "inc", T.Right, T.Join, tid "prob", T.On, dw "inc.sys_id", T.Equals, dw "prob.first_reported" ]
+                    expected = from [ S.Join S.RightOuter (table "inc") (table "prob") ("inc.sys_id", "prob.first_reported") ]
+                parse expr `shouldBe` expected
+            it "outer" $ do 
+                let expr = [ T.Select, T.Asterisk, T.From, tid "inc", T.Outer, T.Join, tid "prob", T.On, dw "inc.sys_id", T.Equals, dw "prob.first_reported" ]
+                    expected = from [ S.Join S.FullOuter (table "inc") (table "prob") ("inc.sys_id", "prob.first_reported") ]
+                parse expr `shouldBe` expected
+            it "inner" $ do 
+                let expr = [ T.Select, T.Asterisk, T.From, tid "inc", T.Inner, T.Join, tid "prob", T.On, dw "inc.sys_id", T.Equals, dw "prob.first_reported" ]
+                    expected = from [ S.Join S.Inner (table "inc") (table "prob") ("inc.sys_id", "prob.first_reported") ]
+                parse expr `shouldBe` expected
+            it "multiple" $ do 
+                let expr = [ T.Select, T.Asterisk, T.From
+                            , tid "inc", T.Inner, T.Join, tid "prob", T.On, dw "inc.sys_id", T.Equals, dw "prob.first_reported" 
+                            , T.Natural, T.Join, tid "change"
+                            , T.Left, T.Join, tid "cat_task", T.On, dw "cat_task.request", T.Equals, dw "change.request"
+                            ]
+                    expected = from [S.Join S.LeftOuter 
+                                        (S.Natural 
+                                            (S.Join S.Inner (S.Table "inc" Nothing) (S.Table "prob" Nothing) ("inc.sys_id","prob.first_reported")) 
+                                            (S.Table "change" Nothing)
+                                        ) 
+                                        (S.Table "cat_task" Nothing) 
+                                        ("cat_task.request","change.request")
+                                    ]
+                parse expr `shouldBe` expected
+                
 
     describe "expression" $ do 
         describe "subquery" $ do 
@@ -369,8 +406,15 @@ columns cols = S.Select ( S.Columns cols) Nothing S.All
 tid :: String -> T.Token
 tid str = T.Identifier str
 
+dw :: String -> T.Token
+dw str = T.Dotwalk str
+
 sid :: String -> S.Expr
 sid str = S.Identifier str
 
 selectWildcard :: S.Query
 selectWildcard = S.Select S.Wildcard Nothing S.All
+
+
+table :: String -> S.Table 
+table str = S.Table str Nothing

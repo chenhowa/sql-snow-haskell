@@ -73,7 +73,8 @@ import Lexer.Tokens as T
 %nonassoc '=' '!=' '<' '<=' '>' '>='
 %left '+' '-'
 %left '*' '/' '%'
-%left NEG
+%left join natural inner left right outer
+%right NEG in notIn
 
 %%
 
@@ -188,7 +189,7 @@ Tables          :: { [ S.Table ] }
 Table           :: { S.Table }  
                 : identifier                    { S.Table $1 Nothing }
                 | identifier Alias              { S.Table $1 $2 }
-                | Table natural join Table      { S.Join S.Natural $1 $4 Nothing }
+                | Table natural join Table      { S.Natural $1 $4 }
                 | Table Join Table On           { S.Join $2 $1 $3 $4 }
 
 Join            :: { S.JoinType }           
@@ -197,9 +198,8 @@ Join            :: { S.JoinType }
                 | right join                    { S.RightOuter }
                 | outer join                    { S.FullOuter }
 
-On              :: { Maybe S.OnColumns }
-                : on identifier '=' identifier      { Just ($2, $4) }
-                | on dotwalk '=' dotwalk            { Just ($2, $4) }
+On              :: { S.OnColumns }
+                : on dotwalk '=' dotwalk            { ($2, $4) }
 
 Limit           :: { Maybe S.Limit }                  
                 : {- empty -}                   { Nothing }

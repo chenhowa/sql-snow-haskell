@@ -1,5 +1,5 @@
 module Parser.Validator where 
-
+{-}
 import Parser.Syntax as S
 
 data ValidState = ValidState 
@@ -128,7 +128,7 @@ putError = do
     put $ state { error = "invalid query" }
     return ()
 
-
+-}
 
 
     
