@@ -2,6 +2,7 @@ module Parser.Validator where
 
 import qualified Parser.Syntax as S
 import Control.Monad.State
+import qualified Data.Map.Strict as Map
 
 data ValidState = ValidState 
     { valid :: Bool
@@ -9,7 +10,7 @@ data ValidState = ValidState
     , query :: S.Query
 --    , input :: Input 
     , tables :: [ S.Table ]
-    , columns :: [ S.Column ]
+    , columns :: Maybe S.SelectType
     }
 
 initialValidState :: S.Query -> ValidState
@@ -18,7 +19,7 @@ initialValidState q = ValidState
     , errors = ""
     , query = q 
     , tables = [] 
-    , columns = []
+    , columns = Nothing
     }
 
 putTables :: State ValidState ()
@@ -34,6 +35,96 @@ putTables = do
         getTables m = case m of 
             Nothing -> []
             Just from -> (S.tables from)
+
+putColumns :: State ValidState () 
+putColumns = do 
+    state <- get
+    case query state of 
+        S.Select stype _ _ -> do
+            put $ state { columns = ( maybeColumns stype }
+        _ -> put $ state { columns=Nothing, errors="not a select query" }
+    return ()
+    where 
+        maybeColumns :: S.SelectType -> Maybe S.SelectType
+        maybeColumns s = Just s
+
+
+
+
+validateQuery :: State ValidState ()
+validateQuery = do 
+    validateColumns
+    validateTables
+    validateExpressions
+    validateColumnsMatchTables
+    validateSubQueries
+
+    state <- get
+    case input state of 
+        ValidSelect st maybeFrom -> do
+            put $ { state input=(ValidColumns st) }
+            validateColumns <- validateColumns
+            case maybeFrom of 
+                Nothing
+        _ -> do 
+            put $ state { errors="invalid query"}
+
+validateColumnsMatchTables :: State ValidState ()
+validateColumnsMatchTables = do 
+    putTables
+    putColumns
+    state <- get
+    if columnsMatchTables (columns state) (tables state)
+    then do putError
+    else do putError
+    return ()
+    where 
+        columnsMatchTables :: S.SelectType -> [ S.Table ] -> Boolean
+        columnsMatchTables stype tables = 
+            case stype of 
+                S.Wildcard -> not $ null tables
+                S.Columns cols -> 
+                    let tableMap = buildTableNameMap tables
+                    in  foldr (columnInMap tableMap) True cols
+        buildTableNameMap :: [ S.Table ] -> Map.Map String (Maybe String)
+        buildTableNameMap tables = 
+            Map.fromList (convertToTuples tables)
+            where 
+                convertToTuples :: [S.Table] -> [(String, Maybe String)]
+                convertToTuples tables = concat (convert <$> tables)
+                    where
+                        convert :: S.Table -> [(String, Maybe String)]
+                        convert table = case table of 
+                            S.Table id alias -> 
+                                let idTup = [(id, alias)]
+                                    aliasTup = case alias of 
+                                        Nothing -> []
+                                        Just a -> [(a, Just id)]
+                                in  idTup <> aliasTup
+        columnInMap :: Map.Map String (MaybeString) -> S.Column -> Bool -> Bool
+        columnInMap map (S.Column expr alias) b = 
+            let tables = tablesInExpr col []
+            in  b `and` (toBool $ Map.lookup map tables)
+        
+        tablesInExpr :: S.Expr -> [(Table, Column)] -> [(Table, Column)]
+        tablesInExpr expr acc = case expr of 
+            S.Identifier str -> [(str, str)] <> acc
+            S.Constant _ -> acc
+            S.Function _ args -> ( concat ( (flip tablesInExpr) acc  <$> args) )
+            S.Operator opType ->  acc <> (applyTablesInExprs $ S.operatorArgs opType)
+            S.SubQuery _ _ -> acc
+            where 
+                applyTablesInExprs :: [Expr] -> [(Table, Column)]
+                applyTablesInExprs exprs = concat ((tablesInExpr []) <$> exprs)
+        toBool :: Maybe a -> Bool 
+        toBool maybe = case maybe of 
+            Just _ -> True
+            Nothing -> False
+                        
+type Table = String
+type Column = String
+
+
 {-
 validateQuery :: State ValidState Boolean 
 validateQuery = do 
@@ -75,10 +166,6 @@ validateWildcard = do
     else do 
         putError
 
-putColumns :: State ValidState () 
-putColumns = do 
-    state <- get
-    put $ state { columns = (getColumns (query state)) }
 
 data Input
     = ValidSelect S.SelectType (Maybe S.FromClause)
