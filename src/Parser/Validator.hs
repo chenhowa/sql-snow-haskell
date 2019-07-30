@@ -1,17 +1,40 @@
 module Parser.Validator where 
-{-}
-import Parser.Syntax as S
+
+import qualified Parser.Syntax as S
+import Control.Monad.State
 
 data ValidState = ValidState 
-    { valid :: Boolean 
-    , error :: String 
+    { valid :: Bool
+    , errors :: String 
     , query :: S.Query
-    , input :: Input 
+--    , input :: Input 
     , tables :: [ S.Table ]
     , columns :: [ S.Column ]
     }
 
+initialValidState :: S.Query -> ValidState
+initialValidState q = ValidState 
+    { valid = True 
+    , errors = ""
+    , query = q 
+    , tables = [] 
+    , columns = []
+    }
 
+putTables :: State ValidState ()
+putTables = do 
+    state <- get 
+    case query state of 
+        S.Select _ from _ -> do
+            put $ state { tables=(getTables from) }
+        _ -> put $ state { tables=[], errors="not a select query" }
+    return ()
+    where 
+        getTables :: (Maybe S.FromClause) -> [ S.Table ]
+        getTables m = case m of 
+            Nothing -> []
+            Just from -> (S.tables from)
+{-
 validateQuery :: State ValidState Boolean 
 validateQuery = do 
     putTables
@@ -26,20 +49,6 @@ validateQuery = do
                 Nothing
         _ -> do 
             put $ state { error="invalid query"}
-
-putTables :: State ValidState ()
-putTables = do 
-    state <- get 
-    case query state of 
-        S.Select _ from _ -> do
-            put $ state { tables = getTables from }
-        _ -> put $ state { tables = [], error="not a select query" }
-    return ()
-    where 
-        getTables :: (Maybe S.FromClause) -> [ S.Table ]
-        getTables m = case m of 
-            Nothing -> []
-            Just from -> (S.tables from)
 
 validateColumns :: State ValidState ()
 validateColumns = do 

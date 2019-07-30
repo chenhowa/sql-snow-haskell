@@ -3,10 +3,11 @@ module ParserSpec where
 
 import Test.Hspec
 import Parser (parse)
-import Parser.Syntax as S
-import Lexer.Tokens as T
+import qualified Parser.Syntax as S
+import Parser.Syntax (Column(..))
+import qualified Lexer.Tokens as T
 import Parser.Expressions
-import Parser.Expressions as E
+import qualified Parser.Expressions as E
 
 spec :: Spec
 spec = do 
@@ -69,24 +70,24 @@ spec = do
         describe "one table" $ do 
             it "no alias" $ do 
                 parse [ T.Select, T.Asterisk, T.From, tid "incident"]
-                    `shouldBe` from [Table "incident" Nothing]
+                    `shouldBe` from [S.Table "incident" Nothing]
             it "alias" $ do 
                 parse [ T.Select, T.Asterisk, T.From, tid "incident", tid "In"]
-                    `shouldBe` from [Table "incident" $ Just "In"]
+                    `shouldBe` from [S.Table "incident" $ Just "In"]
                 parse [ T.Select, T.Asterisk, T.From, tid "incident", T.As, tid "In"]
-                    `shouldBe` from [Table "incident" $ Just "In"]
+                    `shouldBe` from [S.Table "incident" $ Just "In"]
         describe "multiple tables" $ do
             it "no alias" $ do 
                 parse [ T.Select, T.Asterisk, T.From, tid "incident", 
                     T.Comma, tid "problem"]
-                    `shouldBe` from [Table "problem" Nothing, Table "incident" Nothing]
+                    `shouldBe` from [S.Table "problem" Nothing, S.Table "incident" Nothing]
             it "alias" $ do 
                 parse [ T.Select, T.Asterisk, T.From, tid "incident", tid "In",
                     T.Comma, tid "problem", tid "P"]
-                    `shouldBe` from [Table "problem" $ Just "P", Table "incident" $ Just "In"]
+                    `shouldBe` from [S.Table "problem" $ Just "P", S.Table "incident" $ Just "In"]
                 parse [ T.Select, T.Asterisk, T.From, tid "incident", T.As, tid "In",
                         T.Comma, tid "problem", T.As, tid "P"]
-                    `shouldBe` from [Table "problem" $ Just "P", Table "incident" $ Just "In"]
+                    `shouldBe` from [S.Table "problem" $ Just "P", S.Table "incident" $ Just "In"]
         it "with limit" $ do 
             let expr = [ T.Select, T.Asterisk, T.From, tid "incident", T.Limit, T.Integer "5"]
                 expected = genLimit [ S.Table "incident" Nothing ] "5"
@@ -391,7 +392,7 @@ having ts ids expr = S.Select S.Wildcard ( Just (S.mkFromClause ts Nothing (Just
 genGroupBy :: [ S.Table ] -> [ String ] -> S.Query
 genGroupBy ts ids = S.Select S.Wildcard ( Just (S.mkFromClause ts Nothing (Just $ S.GroupBy ids Nothing) Nothing Nothing) ) S.All
 
-genWhere_ :: [ S.Table ] -> Expr -> S.Query 
+genWhere_ :: [ S.Table ] -> S.Expr -> S.Query 
 genWhere_ ts expr = S.Select S.Wildcard ( Just (S.mkFromClause ts (Just expr) Nothing Nothing Nothing) ) S.All
 
 genLimit :: [S.Table] -> String -> S.Query 
