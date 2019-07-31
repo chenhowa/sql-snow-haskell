@@ -41,7 +41,7 @@ putColumns = do
     state <- get
     case query state of 
         S.Select stype _ _ -> do
-            put $ state { columns = ( maybeColumns stype }
+            put $ state { columns = ( maybeColumns stype) }
         _ -> put $ state { columns=Nothing, errors="not a select query" }
     return ()
     where 
@@ -50,7 +50,7 @@ putColumns = do
 
 
 
-
+{-
 validateQuery :: State ValidState ()
 validateQuery = do 
     validateColumns
@@ -123,7 +123,7 @@ validateColumnsMatchTables = do
                         
 type Table = String
 type Column = String
-
+-}
 
 {-
 validateQuery :: State ValidState Boolean 

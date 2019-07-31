@@ -53,6 +53,8 @@ data Expr
     | Function ID Args
     | Operator OperatorType
     | SubQuery Modifier Query
+    | Row [Op]
+    | Rows Query
     deriving (Eq, Show)
 
 data Modifier 
@@ -81,35 +83,16 @@ data OperatorType
     | Or Op Op
     | Not Op
     | Neg Op
-    | In Op Values
-    | NotIn Op Values
+    | In Op Op
+    | NotIn Op Op
     deriving (Eq, Show)
-
-operatorArgs :: OperatorType -> Args 
-operatorArgs op = case op of 
-    S.Plus op1 op2 ->  [op1, op2]
-    S.Minus op1 op2 ->  [op1, op2]
-    S.FloatDivide op1 op2 ->  [op1, op2]
-    S.Multiply op1 op2 ->  [op1, op2]
-    S.Modulo op1 op2 ->  [op1, op2]
-    S.Equals op1 op2 ->  [op1, op2]
-    S.NotEquals op1 op2 ->  [op1, op2]
-    S.LT op1 op2 ->  [op1, op2]
-    S.LTE op1 op2 ->  [op1, op2]
-    S.GT op1 op2 ->  [op1, op2]
-    S.GTE op1 op2 ->  [op1, op2]
-    S.And op1 op2 ->  [op1, op2]
-    S.Or op1 op2 ->  [op1, op2]
-    S.Not op1 ->  [op1, op2]
-    S.Neg op1 ->  [op1, op2]
-    S.In op1 Values ->  [op1]
-    NotIn op1 Values ->  [op1, op2]
-
 type Op = Expr
+{-}
 data Values
     = Row [Expr]
     | Rows Query
     deriving (Eq, Show)
+    -}
 
 {- FROM Clause -}
 
