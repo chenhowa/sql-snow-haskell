@@ -31,31 +31,31 @@ validateExprTypes = do
                 S.String _ -> String
             S.SubQuery _ _ -> Subquery
             S.Operator opType -> evalState validateOpTypes (ValidOpState { opErrors="", op=opType }) 
-            S.Function fid fargs -> evalState validateFnTypes (ValidFnState { fnErrors="", id=fid, args=fargs } )
+            S.Function fid fargs -> evalState validateFnTypes (ValidFnState { fnErrors="", fnId=fid, args=fargs } )
         )
 
 data ValidFnState = ValidFnState 
     { fnErrors :: String 
-    , id :: String
+    , fnId :: String
     , args :: S.Args
     }
 
 validateFnTypes :: State ValidFnState Type
 validateFnTypes = do 
     state <- get
-    let maybeFnInfo = Map.lookup ( id state ) fnMap
+    let maybeFnInfo = Map.lookup ( fnId state ) fnMap
+    return Boolean
 
 fnMap :: Map.Map String OperatorInfo
 fnMap = Map.fromList 
-    [ ("COUNT", mkOperatorInfo Number [(=) Identifier] )
-    , ("AVG", mkOperatorInfo Number [(=) Identifier])
-    , ("SUM", mkOperatorInfo Number [(=) Identifier])
-    , ("MAX", mkOperatorInfo Number [(=) Identifier])
-    , ("MIN", mkOperatorInfo Number [(=) Identifier])
-    , ("CONCAT", mkOperatorInfo String [(=) String, (=) String])
-    , ("LENGTH", mkOperatorInfo Number [(=) String])
-    , ("LEFT", mkOperatorInfo Number [(=) String, (=) Number])
-    , ("REPLACE", mkOperatorInfo )
+    [ ("COUNT", mkOperatorInfo Number [(==) Identifier] )
+    , ("AVG", mkOperatorInfo Number [(==) Identifier])
+    , ("SUM", mkOperatorInfo Number [(==) Identifier])
+    , ("MAX", mkOperatorInfo Number [(==) Identifier])
+    , ("MIN", mkOperatorInfo Number [(==) Identifier])
+    , ("CONCAT", mkOperatorInfo String [(==) String, (==) String])
+    , ("LENGTH", mkOperatorInfo Number [(==) String])
+    , ("LEFT", mkOperatorInfo Number [(==) String, (==) Number])
     ]
 
 
@@ -84,14 +84,14 @@ validateOpTypes = do
                 foldr (selectType) Unknown ((typeCheck types) <$> checkers)
           typeCheck :: [Type] -> OperatorInfo -> Type
           typeCheck types info = case info of 
-                OperatorInfo i -> 
-                    if (length (argTypes i) == length args) && 
-                                (foldr (&&) True ( typeCheckers <*> (findType <$> args))) 
-                    then (returnType i)
+                OperatorInfo {returnType = r, argTypes = as} -> 
+                    if (length (as) == length types ) && 
+                                (foldr (&&) True ( as <*> types )) 
+                    then (r)
                     else Unknown
-                SameTwo st -> 
-                    if length types == 2 && (head types) == ( head . head $ types)
-                    then (returnType st)
+                SameTwo {returnType = r} -> 
+                    if length types == 2 && (head types) == ( head . tail $ types)
+                    then (r)
                     else Unknown
           selectType :: Type -> Type -> Type 
           selectType (Unknown) x = x
