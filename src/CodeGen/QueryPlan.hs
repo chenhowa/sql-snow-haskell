@@ -1,6 +1,7 @@
 module CodeGen.QueryPlan where
 
 import qualified Text.StringTemplate as T
+import qualified Data.List as L
 
 data QueryPlan 
     = Read Table 
@@ -38,9 +39,9 @@ generate plan =
 
 readTemplate :: Template
 readTemplate = 
-    T.newSTMP $ concat 
+    T.newSTMP $ concat . L.intersperse "\n" $
             [   "{" 
-            ,       "init: function(params){" 
+            ,       "init: function init(params){" 
             ,           "this.params = params;" 
             ,           "this.gr = new GlideRecord(\'$table$\');"
             ,           "if(this.params.sorts){"
@@ -54,9 +55,9 @@ readTemplate =
             ,               "}"
             ,           "}"
             ,       "}," 
-            ,       "next: function(){" 
-            ,           "return this.gr.next()" 
-            ,       "}" 
+            ,       "next: function next(){" 
+            ,           "return this.gr.next();" 
+            ,       "}," 
             ,   "}"
             ]
 
@@ -67,13 +68,13 @@ generateRead table =
 
 projectionTemplate :: Template 
 projectionTemplate =
-    T.newSTMP $ concat
+    T.newSTMP $ concat . L.intersperse "\n" $
         [   "{"
-        ,       "init: function(params) {"
+        ,       "init: function init(params) {"
         ,           "this.params = params"
         ,           "this.source.init(params)"
         ,       "},"
-        ,       "next: function(){" 
+        ,       "next: function next(){" 
         ,           "return this.restricted(this.source.next());"
         ,       "}," 
         ,       "source: $source$,"
@@ -83,8 +84,8 @@ projectionTemplate =
 
 restrictionTemplate :: Template 
 restrictionTemplate = 
-    T.newSTMP $ concat
-        [   "function(tuple){"
+    T.newSTMP $ concat . L.intersperse "\n" $
+        [   "function restriction(tuple){"
         ,       "var item = {"
         ,           "getValue: function(col){"
         ,               "if(this.values[col]){"
@@ -95,7 +96,7 @@ restrictionTemplate =
         ,           "},"
         ,           "values: {"
         ,               "$columns$"
-        ,           "}"
+        ,           "},"
         ,       "};"
         ,       "return item;"
         ,   "}"
@@ -107,7 +108,8 @@ generateProjection cols source =
     where 
         restriction = 
             ("restrictions"
-            , T.toString $ T.setManyAttrib [("columns", concat (colText <$> cols))] restrictionTemplate
+            , T.toString $ T.setManyAttrib 
+                [("columns", concat . L.intersperse "\n" $ (colText <$> cols))] restrictionTemplate
             )
         colText :: (Column, Column) -> String
         colText (new, old) = 
@@ -117,7 +119,7 @@ generateProjection cols source =
 
 selectionTemplate :: Template
 selectionTemplate = 
-    T.newSTMP $ concat 
+    T.newSTMP $ concat . L.intersperse "\n" $
         [ " {"
         , "     init: function(params) {"
         , "         this.params = params"
@@ -145,7 +147,7 @@ generateSelection conds source =
 
 sortTemplate :: Template 
 sortTemplate = 
-    T.newSTMP $ concat 
+    T.newSTMP $ concat . L.intersperse "\n" $
         [   "{"
         ,       "init: function(params) {"
         ,           "this.params = params"
@@ -156,7 +158,7 @@ sortTemplate =
         ,               "this.params.sorts = [sort]"
         ,           "}"
         ,           "this.source.init(this.params)"
-        ,       "}"
+        ,       "},"
         ,       "next: function(){"
         ,           "return this.source.next()"
         ,       "},"
@@ -166,7 +168,10 @@ sortTemplate =
 
 generateSort :: Column -> Direction -> (String, String) -> Statement
 generateSort col dir source = 
-    T.toString $ T.setManyAttrib [source] sortTemplate
+    T.toString $ T.setManyAttrib [source, desc, column] sortTemplate
+    where 
+        desc = ("desc", if dir == Ascending then "false" else "true")
+        column = ("column", col)
 
 joinTemplate :: Template
 joinTemplate = 
