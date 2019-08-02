@@ -14,9 +14,19 @@ spec = do
             generate plan `shouldBe` (T.toString $
                  T.setManyAttrib [("table", "incident")]  readTemplate)
         it "projection" $ do
-            let plan = Projection (Read "incident") ["number", "u_name"] 
+            let plan = Projection (Read "incident") [("number", "u_number"), ("u_name", "u_name")] 
             generate plan `shouldBe` (T.toString $
-                 T.setManyAttrib [("source", generate (Read "incident"))] 
+                 T.setManyAttrib 
+                    [ ( "source", generate (Read "incident"))
+                    , ( "restrictions"
+                      , T.toString $ T.setManyAttrib 
+                            [ ("columns", concat 
+                                [ "number: tuple.getValue(\'u_number\'),"
+                                , "u_name: tuple.getValue(\'u_name\'),"
+                                ])
+                            ] restrictionTemplate
+                      )
+                    ] 
                             projectionTemplate )      
         it "selection" $ do 
             let plan = Selection (Read "incident") ["apple", "banana"]

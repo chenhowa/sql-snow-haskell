@@ -5,7 +5,7 @@ import qualified Text.StringTemplate as T
 data QueryPlan 
     = Read Table 
     | Join QueryPlan QueryPlan [Condition]
-    | Projection QueryPlan [Column]
+    | Projection QueryPlan [(Column, Column)]
     | Selection QueryPlan [ Condition ]
     | Sort QueryPlan Direction Column
     deriving (Eq, Show)
@@ -77,34 +77,37 @@ projectionTemplate =
         ,           "return this.restricted(this.source.next());"
         ,       "}," 
         ,       "source: $source$,"
-        ,       "restricted: $columns$,"
+        ,       "restricted: $restrictions$,"
         ,   "}" 
         ]
 
+restrictionTemplate :: Template 
+restrictionTemplate = 
+    T.newSTMP $ concat
+        [   "function(tuple){"
+        ,       "var item = {"
+        ,           "getValue: function(col){"
+        ,               "if(this.values[col]){"
+        ,                   "return this.values[col];"
+        ,               "} else {"
+        ,                   "return null;"
+        ,               "}"
+        ,           "},"
+        ,           "values: {"
+        ,               "$columns$"
+        ,           "}"
+        ,       "};"
+        ,       "return item;"
+        ,   "}"
+        ]
 
 generateProjection :: [ (Column, Column) ] -> (String, String) -> Statement 
 generateProjection cols source =
-    T.toString $  T.setManyAttrib [source, columns] projectionTemplate
+    T.toString $  T.setManyAttrib [source, restriction] projectionTemplate
     where 
-    columns = 
-            ( "columns"
-            , concat 
-                [   "function(tuple){"
-                ,       "var item = {"
-                ,           "getValue: function(col){"
-                ,               "if(this.values[col]){"
-                ,                   "return this.values[col];"
-                ,               "} else {"
-                ,                   "return null;"
-                ,               "}"
-                ,           "}",
-                ,           "values: {"
-                ,               concat (colText <$> cols)
-                ,           "}"
-                ,       "};"
-                ,       "return item;"
-                ,   "}"
-                ]
+        restriction = 
+            ("restrictions"
+            , T.toString $ T.setManyAttrib [("columns", concat (colText <$> cols))] restrictionTemplate
             )
         colText :: (Column, Column) -> String
         colText (new, old) = 
@@ -123,13 +126,16 @@ selectionTemplate =
         , "     },"
         , "     next: function(){"
         , "         while(this.source.next()){"
-        , "             if(this.matchesCondition(this.source)){"
+        , "             if(this.meetsCondition(this.source)){"
         , "                 return this.source;"
         , "             }"
         , "         }"
         , "         return false;"
         , "     },"
         , "     source: $source$,"
+        , "     meetsCondition: function(src){"
+        , "         return $condition$(src)"
+        , "     },"
         , " }"
         ]
 
@@ -143,7 +149,13 @@ sortTemplate =
         [   "{"
         ,       "init: function(params) {"
         ,           "this.params = params"
-        ,           "this.source.init(params)"
+        ,           "var sort = { desc: $desc$, column: $column$ };"
+        ,           "if(this.params.sorts) {"
+        ,               "this.params.sorts.push(sort);"
+        ,           "} else {"
+        ,               "this.params.sorts = [sort]"
+        ,           "}"
+        ,           "this.source.init(this.params)"
         ,       "}"
         ,       "next: function(){"
         ,           "return this.source.next()"
@@ -165,11 +177,11 @@ joinTemplate =
         ,           "this.source_1.init(this.params)"
         ,           "this.source_2.init(this.params)"
         ,       "},"
-        ,       "next: function() { // This uses naive nested loops join. Next will be to use chunk nested loops join"
+        ,       "next: function() { /*This uses naive nested loops join. Next will be to use chunk nested loops join*/"
         ,           "while(this.source_1.next()){"
         ,               "var valid_2 = this.source_2.hasNext()"
         ,               "if(!valid_2){"
-        ,                   "this.source_2.init(this.params) //redo the query for the next round"
+        ,                   "this.source_2.init(this.params) /*redo the query for the next round*/"
         ,               "}"
         ,               "while(this.source_2.next()){"
         ,                   "if(this.meetsCondition(this.source_1, this.source_2)){"
@@ -181,15 +193,14 @@ joinTemplate =
         ,       "},"
         ,       "source_1: $source_1$,"
         ,       "source_2: $source_2$,"
-        ,       "meetsCondition: function(val_1, val_2){"
-        ,           "return $condition$(val_1, val_2);"
+        ,       "meetsCondition: function(src_1, src_2){"
+        ,           "return $condition$(src_1, src_2);"
         ,       "},"
         ,       "wrap: function(src_1, src_2){"
         ,           "var item = {"
         ,               "getValue: function(col){"
         ,                   "var val_1 = this.src_1.getValue(col);"
-        ,                   "var val_2 = this.
-        src_2.getValue(col);"
+        ,                   "var val_2 = this.src_2.getValue(col);"
         ,                   "if(val_1 !== null && val_2 !== null){"
         ,                       "return [].concat.apply([], [val_1, val_2]);"
         ,                   "} else {"
