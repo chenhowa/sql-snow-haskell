@@ -41,11 +41,21 @@ readTemplate =
     T.newSTMP $ concat 
             [   "{" 
             ,       "init: function(params){" 
-            ,           "this.params = params" 
-            ,           "this.gr = new GlideRecord(\'$table$\');" 
-            ,       "}, " 
+            ,           "this.params = params;" 
+            ,           "this.gr = new GlideRecord(\'$table$\');"
+            ,           "if(this.params.sorts){"
+            ,               "for(var i = 0; i < this.params.sorts.length; i++){"
+            ,                   "var sort = this.params.sorts[i];"
+            ,                   "if(sort.desc){"
+            ,                       "this.gr.orderByDesc(\'sort.column\');"
+            ,                   "} else {"
+            ,                       "this.gr.orderBy(\'sort.column\');"
+            ,                   "}"
+            ,               "}"
+            ,           "}"
+            ,       "}," 
             ,       "next: function(){" 
-            ,           "return gr.next()" 
+            ,           "return this.gr.next()" 
             ,       "}" 
             ,   "}"
             ]
@@ -61,33 +71,66 @@ projectionTemplate =
         [   "{"
         ,       "init: function(params) {"
         ,           "this.params = params"
-        ,           "this.source.init()"
+        ,           "this.source.init(params)"
         ,       "},"
         ,       "next: function(){" 
-        ,           "return this.source.next()" 
+        ,           "return this.restricted(this.source.next());"
         ,       "}," 
-        ,       "source: $source$," 
+        ,       "source: $source$,"
+        ,       "restricted: $columns$,"
         ,   "}" 
         ]
 
 
-generateProjection :: [ Column ] -> (String, String) -> Statement 
+generateProjection :: [ (Column, Column) ] -> (String, String) -> Statement 
 generateProjection cols source =
-    T.toString $  T.setManyAttrib [source] projectionTemplate
+    T.toString $  T.setManyAttrib [source, columns] projectionTemplate
+    where 
+    columns = 
+            ( "columns"
+            , concat 
+                [   "function(tuple){"
+                ,       "var item = {"
+                ,           "getValue: function(col){"
+                ,               "if(this.values[col]){"
+                ,                   "return this.values[col];"
+                ,               "} else {"
+                ,                   "return null;"
+                ,               "}"
+                ,           "}",
+                ,           "values: {"
+                ,               concat (colText <$> cols)
+                ,           "}"
+                ,       "};"
+                ,       "return item;"
+                ,   "}"
+                ]
+            )
+        colText :: (Column, Column) -> String
+        colText (new, old) = 
+            let template = T.newSTMP "$new$: tuple.getValue(\'$old$\'),"
+            in  T.toString $ T.setManyAttrib [("new", new), ("old", old)] template
+
 
 selectionTemplate :: Template
 selectionTemplate = 
     T.newSTMP $ concat 
-        [   "{"
-        ,       "init: function(params) {"
-        ,           "this.params = params"
-        ,           "this.source.init()"
-        ,       "}"
-        ,       "next: function(){"
-        ,           "return this.source.next()"
-        ,       "},"
-        ,       "source: $source$,"
-        ,   "}"
+        [ " {"
+        , "     init: function(params) {"
+        , "         this.params = params"
+        , "         this.params.selections = []"
+        , "         this.source.init(this.params)"
+        , "     },"
+        , "     next: function(){"
+        , "         while(this.source.next()){"
+        , "             if(this.matchesCondition(this.source)){"
+        , "                 return this.source;"
+        , "             }"
+        , "         }"
+        , "         return false;"
+        , "     },"
+        , "     source: $source$,"
+        , " }"
         ]
 
 generateSelection :: [ Condition ] -> (String, String) -> Statement
@@ -100,7 +143,7 @@ sortTemplate =
         [   "{"
         ,       "init: function(params) {"
         ,           "this.params = params"
-        ,           "this.source.init()"
+        ,           "this.source.init(params)"
         ,       "}"
         ,       "next: function(){"
         ,           "return this.source.next()"
@@ -119,13 +162,44 @@ joinTemplate =
         [   "{"
         ,       "init: function(params) {"
         ,           "this.params = params"
-        ,           "this.source_1.init()"
-        ,           "this.source_2.init()"
+        ,           "this.source_1.init(this.params)"
+        ,           "this.source_2.init(this.params)"
         ,       "},"
-        ,       "next: function() {"
+        ,       "next: function() { // This uses naive nested loops join. Next will be to use chunk nested loops join"
+        ,           "while(this.source_1.next()){"
+        ,               "var valid_2 = this.source_2.hasNext()"
+        ,               "if(!valid_2){"
+        ,                   "this.source_2.init(this.params) //redo the query for the next round"
+        ,               "}"
+        ,               "while(this.source_2.next()){"
+        ,                   "if(this.meetsCondition(this.source_1, this.source_2)){"
+        ,                       "return this.wrap(this.source_1, this.source_2);"
+        ,                   "}"
+        ,               "}"
+        ,           "}"
+        ,           "return false;"
         ,       "},"
         ,       "source_1: $source_1$,"
         ,       "source_2: $source_2$,"
+        ,       "meetsCondition: function(val_1, val_2){"
+        ,           "return $condition$(val_1, val_2);"
+        ,       "},"
+        ,       "wrap: function(src_1, src_2){"
+        ,           "var item = {"
+        ,               "getValue: function(col){"
+        ,                   "var val_1 = this.src_1.getValue(col);"
+        ,                   "var val_2 = this.
+        src_2.getValue(col);"
+        ,                   "if(val_1 !== null && val_2 !== null){"
+        ,                       "return [].concat.apply([], [val_1, val_2]);"
+        ,                   "} else {"
+        ,                       "return val_1 || val_2"
+        ,                   "}"
+        ,               "}"
+        ,           "};"
+        ,           "return item;"
+        ,       "}"
+        ,   "}"
         ]
 
 generateJoin :: [Condition] -> [(String, String)] -> Statement
