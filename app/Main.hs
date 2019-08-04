@@ -1,6 +1,8 @@
 module Main where
 
 import Lib
+import qualified Server as S
 
 main :: IO ()
-main = someFunc
+main = do 
+    S.runApp
