@@ -71,11 +71,26 @@ For final output -- weird sort-of projection, that doesn't have much to do with 
 
 ### Query Optimizer Algorithm
 
+Here's a pseudo-algorithm for the Query Optimizer to take the above tables and turn them into a Query Plan.
+
+```
+while the Query Plan is not complete
+    for each table in Tables
+        if table has not been used in the query plan
+            calculate the cost of adding the table to the query plan
+        put the cheapest addition in the query plan build-up table, along with the cost.
+        Also add any interesting order plans, along with their costs.
+
+Choose the cheapest complete query plan, and pass it to aggregation for groupinig, and then use the "having" clause to filter the kept groups.
+
+Pass the groups to the final projection/output columns, and then to the Order By for sorting (which we won't allow for SQL-Snow, since we don't have access to indexes or out-of-core algorithms).
+```
+
 ## Representing Functions and Operators
 
 The second problem that needs addressing is how to translate conditions and operators like "LEN(x) > 5 AND y IS NOT NULL" into code for both the Query Optimizer, the resulting Query Plan, and the code generated from the query plan. At the time of first writing, I only have the code generated from the query plan, where I essentially copy and paste the condition and operators directly into the generated code as a *function call* of the form "*condition*(record)", that calls the *condition* function on the record currently being processed in the code. But although the general idea is good, it isn't immediately clear how an expression like the one above can be translated into a simple function call.
 
-But let's make an attempt, starting from the AST of an expression. An expression is nothing more than a nested series of expressions, and expressions can take any of the following forms:
+But let's make an attempt, starting from the AST of an expression, which itself is a good representation of how the functions should be generated. An expression is nothing more than a nested series of expressions, and expressions can take any of the following forms:
 
 * An identifier, representing some table column
 * A constant, like a number, string, or boolean
@@ -85,15 +100,18 @@ But let's make an attempt, starting from the AST of an expression. An expression
 
 Since expressions are recursive, our goal is to develop a recursive method for generating a function that correctly applies the expression to whatever tuple, or set of tuples, it receives. We might try the following:
 
-* identifier - function of 1 argument that returns the specified column of a tuple, corresponding to the identifier (perhaps through a getValue(`identifier`) call)
-* constant - function of no arguments that just returns the constant
-* function call = function with n-arity that takes the values of its arguments, applies the transformation, and returns them
-* operator - function that takes, 1 or 2 arguments, depending on the operator arity, and returns the result of the transformation.
-* subquery - function of no arguments that returns an iterator to its set of tuples
+* identifier - function of no arguments that returns the string form of the identifier.
+* constant - function of no arguments that just returns the constant, whether is a number or boolean
+* function call - function that calls he named function with the arguments
+* operator - function that calls the named function with the arguments
+* subquery - function that returns an iterator that returns rows of the results, projected down to the correct columns.
+  * This would be useful for the IN operator, which takes a one-valued expression as the first argument, and a subquery as the second argument. The implementation would take the one value, and iterate through the subquery iterator, checking to see if the value is present.
+
+Based on the above discussion, there seems to be a case for a function on a tuple called "getColumn(index: number)", just in case the parse tree fails to rule out a subquery that returns more than one column -- we could just take the first column no matter how many columns are returned.
 
 ### Dynamic vs Static Typing
 
-For both function calls and operators, the types of the arguments can be important during code execution. What does it mean to calculate the length of a number? Or determine whether a value is IN a string? In such cases, we have two options: static type checking or dynamic type checking. Static type checking will occur during the parsing phase, and is intended to prevent the above situations. Dynamic type checking will occur during runtime, and decide what to do based on the received types. For now, we will use dynamic type checking, since it is easier to implement: if the type is not the correct type, simply return NULL. NULL values wlil propagate up through the expression, and the entire expression will ultimate have a value of NULL.
+For both function calls and operators, the types of the arguments can be important during code execution. What does it mean to calculate the length of a number? Or determine whether a value is IN a string? In such cases, we have two options: static type checking or dynamic type checking. Static type checking will occur during the parsing phase, and is intended to prevent the above situations. Dynamic type checking will occur during runtime, and decide what to do based on the received types. For now, we will use dynamic type checking, since it is easier to implement: if the type is not the correct type, simply return NULL. NULL values will propagate up through the expression, and the entire expression will ultimate have a value of NULL.
 
 
 
