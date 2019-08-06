@@ -19,14 +19,43 @@ type Table = String
 type Alias = String
 type Column = String
 
+-- !! This doesn't support cross product joins!!
+-- !! This still needs work to get the selection expression for this particular table, if available.
+
 extractQueryInfo :: P.Query -> [ TableInfo ]
 extractQueryInfo query = case query of 
     P.Select stype mfrom uniq -> case mfrom of 
         Nothing -> []
         Just from -> 
-            let finfo = extractFromInfo from
-                oinfo = extractOutputInfo stype
+            let finfo :: [TableInfo]
+                finfo = extractFromInfo from
+
+                outputCols :: ColumnInfo
+                outputCols = extractOutputColumns stype
+
+            in  removeDuplicates ((combine ocolumns) <$> finfo)
     _ -> []
+    where 
+        combine :: ColumnInfo -> TableInfo -> TableInfo
+        combine (m, o) tinfo@(Table {table = t, alias = a, projection = p}) =
+            let aliasCols = case Map.lookup a m of 
+                        Nothing -> []
+                        Just cols -> cols
+                tableCols = if t /= a
+                            then case Map.lookup t m of 
+                                    Nothing -> []
+                                    Just cols -> cols
+                            else [] 
+            in  tinfo 
+                    { projection = p <> aliasCols <> tableCols <> o
+                    }
+                    
+        removeDuplicates :: [TableInfo] -> [TableInfo]
+        removeDuplicates infos = removeDup <$> infos
+
+        removeDup :: TableInfo -> TableInfo 
+        removeDup info@(Table {projection = ps}) = info { projection = L.nub ps }
+
 
 extractFromInfo :: P.FromClause -> [ TableInfo ]
 extractFromInfo from = case from of 
@@ -137,4 +166,20 @@ extractColumnsFromGroupBy mgb = case mgb of
         extractColumnsFromHaving mhaving = case mhaving of 
             Nothing -> (Map.empty, [])
             Just (P.Having e) -> extractColumnsFromExpr e
+
+extractColumnsFromOrderBy :: Maybe P.OrderBy -> ColumnInfo
+extractColumnsFromOrderBy mob = case mob of 
+    Nothing -> (Map.empty, [])
+    Just ob -> extractColumns ob 
+    where 
+        extractColumns :: P.OrderBy -> ColumnInfo
+        extractColumns (P.OrderBy cols _) = foldr1 combineColumnInfo (tableAndColumn <$> cols)
                 
+extractOutputColumns :: P.SelectType -> ColumnInfo
+extractOutputColumns stype = case stype of 
+    P.Wildcard -> (Map.empty, [])
+    P.Columns cols -> foldr1 combineColumnInfo (extractOutputColumn <$> cols)
+    where 
+        extractOutputColumn :: P.Column -> ColumnInfo
+        extractOutputColumn (P.Column colexpr _) = extractColumnsFromExpr colexpr 
+
