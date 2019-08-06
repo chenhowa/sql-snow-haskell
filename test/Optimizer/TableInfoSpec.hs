@@ -105,6 +105,56 @@ spec = do
                         having = Just $ P.Having $ P.Operator $ P.Plus (P.Identifier "incident.description") (P.Identifier "problem.state")
                         columns = projection <$> (extractQueryInfo q)
                     columns `shouldBe` [["number", "description"], ["state", "category"]]
+        describe "extract columns from SELECT output" $ do 
+            it "one table" $ do 
+                let q = P.Select columns from P.All
+                    columns = P.Columns [ P.Identifier "number", P.identifier "incident.category" ]
+                    from = P.FromClause
+                        { P.tables = [ P.Table "incident" Nothing ]
+                        , P.where_ = Nothing 
+                        , P.groupBy = Nothing 
+                        , P.orderBy = Nothing 
+                        , P.limit = Nothing 
+                        }
+                    cs = projection <$> (extractQueryInfo q)
+                cs `shouldBe` [["category", "number"]]
+            it "multiple tables" $ do 
+                let q = P.Select columns from P.All
+                    columns = P.Columns [ P.Identifier "P.number", P.identifier "incident.category" ]
+                    from = P.FromClause
+                        { P.tables = [ P.Table "incident" Nothing, P.Table "problem" $ Just "P" ]
+                        , P.where_ = Nothing 
+                        , P.groupBy = Nothing 
+                        , P.orderBy = Nothing 
+                        , P.limit = Nothing 
+                        }
+                    cs = projection <$> (extractQueryInfo q)
+                cs `shouldBe` [["category"], ["number"]]
+        describe "extract columns from ORDER BY" $ do 
+            it "when there is only one table" $ do 
+                let q = P.Select P.Wildcard (Just from) P.All
+                    from = P.FromClause 
+                        { P.tables = [ P.Table "incident" Nothing ]
+                        , P.where_ = Nothing
+                        , P.groupBy = Nothing 
+                        , P.orderBy = Just $ P.OrderBy ["number", "incident.category"] Nothing 
+                        , P.limit = Nothing
+                        }
+                    columns = projection <$> (extractQueryInfo q)
+                columns `shouldBe` [["category", "number"]]
+            it "when there are multiple tables" $ do 
+                let q = P.Select P.Wildcard (Just from) P.All
+                    from = P.FromClause 
+                        { P.tables = [ P.Table "incident" $ Just "i", P.Table "problem" $ Just "p" ]
+                        , P.where_ = Nothing
+                        , P.groupBy = Nothing 
+                        , P.orderBy = Just $ P.OrderBy ["i.number", "problem.state", "p.category"] Nothing
+                        , P.limit = Nothing
+                        }
+                    columns = projection <$> (extractQueryInfo q)
+                columns `shouldBe` [ ["number"]
+                                   , ["state", "category"]
+                                   ]
 
 tableInfo :: TableInfo -> (Table, Alias)
 tableInfo info = case info of 
