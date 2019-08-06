@@ -87,14 +87,6 @@ data OperatorType
     | NotIn Op Op
     deriving (Eq, Show)
 type Op = Expr
-{-}
-data Values
-    = Row [Expr]
-    | Rows Query
-    deriving (Eq, Show)
-    -}
-
-{- FROM Clause -}
 
 data FromClause = FromClause 
     { tables :: [ Table ]
