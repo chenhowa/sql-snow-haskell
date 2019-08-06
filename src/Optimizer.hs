@@ -1,5 +1,5 @@
 module Optimizer where 
-
+{-}
 data JoinInfo = 
     Join
         { table1 :: String
@@ -29,7 +29,7 @@ data OutputInfo =
         , columnName :: String
         , expression :: Expression
         }
-
+-}
 {- So here's the issue -- when it comes to the output,
 does the OutputInfo table's Expression column need to
 know what the table is? It might; take for example the following

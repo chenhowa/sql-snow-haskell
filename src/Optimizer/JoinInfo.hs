@@ -1,4 +1,4 @@
-module Optimizer.JoinInfo where 
+{-module Optimizer.JoinInfo where 
 
 import Prelude
 import qualified Parser.Syntax as P
@@ -22,3 +22,5 @@ extractFromInfo (P.FromClause ts ws _ _ _) =
     let tInfo = extractTableInfo ts
         wInfo = extractWhereInfo ws
     in  CONCAT ?? [ tinfo wInfo ]
+
+-}
