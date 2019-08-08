@@ -189,7 +189,6 @@ Tables          :: { [ S.Table ] }
 Table           :: { S.Table }  
                 : identifier                    { S.Table $1 Nothing }
                 | identifier Alias              { S.Table $1 $2 }
-                | Table natural join Table      { S.Natural $1 $4 }
                 | Table Join Table On           { S.Join $2 $1 $3 $4 }
 
 Join            :: { S.JoinType }           

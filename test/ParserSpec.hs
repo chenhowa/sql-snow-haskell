@@ -93,10 +93,6 @@ spec = do
                 expected = genLimit [ S.Table "incident" Nothing ] "5"
             parse expr `shouldBe` expected
         describe "joins" $ do 
-            it "natural" $ do 
-                let expr = [ T.Select, T.Asterisk, T.From, tid "inc", T.Natural, T.Join, tid "prob" ]
-                    expected = from [ S.Natural (table "inc") (table "prob")]
-                parse expr `shouldBe` expected
             it "left outer" $ do 
                 let expr = [ T.Select, T.Asterisk, T.From, tid "inc", T.Left, T.Join, tid "prob", T.On, dw "inc.sys_id", T.Equals, dw "prob.first_reported" ]
                     expected = from [ S.Join S.LeftOuter (table "inc") (table "prob") ("inc.sys_id", "prob.first_reported") ]
@@ -116,13 +112,14 @@ spec = do
             it "multiple" $ do 
                 let expr = [ T.Select, T.Asterisk, T.From
                             , tid "inc", T.Inner, T.Join, tid "prob", T.On, dw "inc.sys_id", T.Equals, dw "prob.first_reported" 
-                            , T.Natural, T.Join, tid "change"
+                            , T.Outer, T.Join, tid "change", T.On, dw "change.number", T.Equals, dw "prob.first_reported"
                             , T.Left, T.Join, tid "cat_task", T.On, dw "cat_task.request", T.Equals, dw "change.request"
                             ]
                     expected = from [S.Join S.LeftOuter 
-                                        (S.Natural 
+                                        (S.Join S.FullOuter
                                             (S.Join S.Inner (S.Table "inc" Nothing) (S.Table "prob" Nothing) ("inc.sys_id","prob.first_reported")) 
                                             (S.Table "change" Nothing)
+                                            ("change.number", "prob.first_reported")
                                         ) 
                                         (S.Table "cat_task" Nothing) 
                                         ("cat_task.request","change.request")

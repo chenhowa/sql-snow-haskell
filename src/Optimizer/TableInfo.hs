@@ -33,7 +33,7 @@ extractQueryInfo query = case query of
                 outputCols :: ColumnInfo
                 outputCols = extractOutputColumns stype
 
-            in  removeDuplicates ((combine ocolumns) <$> finfo)
+            in  removeDuplicates ((combine outputCols) <$> finfo)
     _ -> []
     where 
         combine :: ColumnInfo -> TableInfo -> TableInfo
@@ -73,7 +73,7 @@ extractFromInfo from = case from of
             obColumns = extractColumnsFromOrderBy ob
 
             combinedColumnInfo :: ColumnInfo
-            combinedColumnInfo = foldr1 combineColumnInfo [wColumns, gColumns, ob]
+            combinedColumnInfo = foldr1 combineColumnInfo [wColumns, gColumns, obColumns]
         in  (mkTableInfo combinedColumnInfo) <$> tables 
 
         where 
@@ -111,7 +111,6 @@ extractTables tables = concat (extractTable <$> tables)
                                 Nothing -> str
                                 Just alias -> alias
                     ]
-                P.Natural t1 t2 -> concat [ extractTable t1, extractTable t2 ]
                 P.Join _ t1 t2 _ -> concat [ extractTable t1, extractTable t2 ]
 
 
@@ -173,7 +172,12 @@ extractColumnsFromOrderBy mob = case mob of
     Just ob -> extractColumns ob 
     where 
         extractColumns :: P.OrderBy -> ColumnInfo
-        extractColumns (P.OrderBy cols _) = foldr1 combineColumnInfo (tableAndColumn <$> cols)
+        extractColumns (P.OrderBy cols _) = foldr1 combineColumnInfo (extract <$> cols)
+
+        extract :: String -> ColumnInfo 
+        extract str = case tableAndColumn str of 
+            Nothing -> (Map.empty, [str])
+            Just (t, c) -> (Map.fromList [(t, [c])], [])
                 
 extractOutputColumns :: P.SelectType -> ColumnInfo
 extractOutputColumns stype = case stype of 

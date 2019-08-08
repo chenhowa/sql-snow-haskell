@@ -3,13 +3,14 @@ module Optimizer.JoinInfo where
 import qualified Parser.Syntax as P
 import qualified Optimizer.TableInfo as T
 
-data JoinInfo = 
-    Join
+data JoinInfo
+    = Join
         { table1 :: String
         , table2 :: String
         , onCondition :: JoinCondition
-        , joinType :: JoinType
+        , joinType :: P.JoinType
         }
+    | CrossProduct Table
     deriving (Eq, Show)
 
 type Table = String
@@ -73,14 +74,6 @@ var tuple =
    BUt I WANT TO EXTRACT BOTH AS JOIN CONDITIONS, if we interpret join conditions as Cross Product x filter
 -}
 
-data JoinType
-    = Inner
-    | LeftOuter 
-    | RightOuter
-    | FullOuter
-    | Natural
-    deriving (Eq, Show)
-
 extractQueryInfo :: P.Query -> [JoinInfo]
 extractQueryInfo q = case q of 
     P.Select _ mfrom _ ->  case mfrom of 
@@ -103,18 +96,19 @@ extractInfoTables tables = concat $ (extractInfoTable <$> tables)
         extract :: P.JoinType -> (String, String) -> [ JoinInfo ]
         extract jtype (cond1, cond2) = 
             let m1 = T.tableAndColumn cond1
-                m2 = T.tableAndColumnd cond2
+                m2 = T.tableAndColumn cond2
             in  case m1 of 
                     Nothing -> []
-                    Just c1@(t1, c1) -> 
+                    Just r1@(t1, c1) -> 
                         case m2 of 
                             Nothing -> []
-                            Just c2@(t2, c2) -> 
-                                Join 
+                            Just r2@(t2, c2) -> 
+                                [ Join 
                                     { table1 = t1
                                     , table2 = t2
-                                    , onCondition = Equals t1 t2
+                                    , onCondition = Equals r1 r2
                                     , joinType = jtype
                                     }
+                                ]
 
 

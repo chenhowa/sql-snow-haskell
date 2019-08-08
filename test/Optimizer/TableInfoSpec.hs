@@ -108,8 +108,8 @@ spec = do
         describe "extract columns from SELECT output" $ do 
             it "one table" $ do 
                 let q = P.Select columns from P.All
-                    columns = P.Columns [ P.Identifier "number", P.identifier "incident.category" ]
-                    from = P.FromClause
+                    columns = P.Columns [ P.Column (P.Identifier "number") Nothing, P.Column (P.Identifier "incident.category") Nothing ]
+                    from = Just $ P.FromClause
                         { P.tables = [ P.Table "incident" Nothing ]
                         , P.where_ = Nothing 
                         , P.groupBy = Nothing 
@@ -120,8 +120,8 @@ spec = do
                 cs `shouldBe` [["category", "number"]]
             it "multiple tables" $ do 
                 let q = P.Select columns from P.All
-                    columns = P.Columns [ P.Identifier "P.number", P.identifier "incident.category" ]
-                    from = P.FromClause
+                    columns = P.Columns [ P.Column (P.Identifier "P.number") Nothing, P.Column (P.Identifier "incident.category") Nothing ]
+                    from = Just $ P.FromClause
                         { P.tables = [ P.Table "incident" Nothing, P.Table "problem" $ Just "P" ]
                         , P.where_ = Nothing 
                         , P.groupBy = Nothing 
