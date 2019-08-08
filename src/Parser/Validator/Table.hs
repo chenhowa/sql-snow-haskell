@@ -76,3 +76,4 @@ validateAcrossTables ats tables =
                                 Nothing -> -- table was not seen before, so check whetehr the alias was used correctly ... an so on
                             {-First we check whether this table was seen before, and if it was, whether it was aliased-}
                         P.Join _ t1 t2 _ -> validateJoin t2 $ validateJoin t1 (jstate, tstate)
+                    in x
