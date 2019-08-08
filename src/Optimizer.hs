@@ -1,20 +1,5 @@
 module Optimizer where 
-{-}
-data JoinInfo = 
-    Join
-        { table1 :: String
-        , table2 :: String
-        , onCondition :: JoinCondition
-        }
-
-data GroupInfo = 
-    Group
-        { table :: String
-        , column :: String
-        }
-
-type Having = Expression
-
+{-
 data SortInfo = 
     Sort
         { order :: Int
