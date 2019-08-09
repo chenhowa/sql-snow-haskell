@@ -1,8 +1,8 @@
-module Validator.TableSpec where 
+module Parser.Validator.TableSpec where 
 
 import Test.Hspec
 
-import Validator.Table
+import Parser.Validator.Table
 import qualified Parser.Syntax as P
 
 spec :: Spec
