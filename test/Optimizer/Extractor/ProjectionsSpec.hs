@@ -89,6 +89,54 @@ spec = do
                         ("change.state", "problem.state")
                     ] 
             extractFromTables tables `shouldSatisfy` E.isLeft
+    describe "extract from expressions" $ do 
+        it "as where" $ do 
+            let expr = P.Function "avg"
+                        [ P.Operator $ P.Plus 
+                            (P.Identifier "hi")
+                            (P.Operator $ P.Minus (P.Identifier "P.yo") (P.Identifier "lo"))
+                        ]
+                expected = 
+                    [ (Nothing, "hi")
+                    , (Just "P", "yo")
+                    , (Nothing, "lo")
+                    ]
+            extractFromCondition expr `shouldBe` expected
+        it "as expr" $ do 
+            let expr = P.Function "avg"
+                        [ P.Operator $ P.Plus 
+                            (P.Identifier "hi")
+                            (P.Operator $ P.Minus (P.Identifier "P.yo") (P.Identifier "lo"))
+                        ]
+                expected = 
+                    [ (Nothing, "hi")
+                    , (Just "P", "yo")
+                    , (Nothing, "lo")
+                    ]
+            extractFromExpr expr `shouldBe` expected
+    describe "extract from group by" $ do 
+        it "without having" $ do 
+            let groupby = P.GroupBy 
+                    ["apple", "tree.orange"] Nothing
+                expected = 
+                    [ (Nothing, "apple")
+                    , (Just "tree", "orange")
+                    ]
+            extractFromAggregation groupby `shouldBe` expected
+        it "with having" $ do 
+            let groupby = P.GroupBy 
+                    ["apple", "tree.orange"] mhaving
+                mhaving = Just . P.Having $ P.Identifier "what"
+                expected = 
+                    [ (Nothing, "apple")
+                    , (Just "tree", "orange")
+                    , (Nothing, "what")
+                    ]
+            extractFromAggregation groupby `shouldBe` expected
+    it "extract from ordering" $ do 
+        let order = P.OrderBy ["hi"] Nothing
+
+        extractFromOrdering order `shouldSatisfy` E.isLeft
     describe "validate columns streams" $ do 
         describe "errors detected" $ do 
             let tmap = Map.fromList 

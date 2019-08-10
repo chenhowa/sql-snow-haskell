@@ -56,16 +56,8 @@ extractFromColumns stype = case stype of
 
     where 
         convert :: P.Column -> ColumnStream
-        convert (P.Column expr _) = convert_ expr
+        convert (P.Column expr _) = extractFromExpr expr
 
-        convert_ :: P.Expr -> ColumnStream
-        convert_ expr = case expr of 
-            P.Identifier id -> case tableAndColumn id of 
-                Nothing -> [(Nothing, id)]
-                Just (s, c) -> [(Just s, c)]
-            P.Function _ args -> concat $ (convert_ <$> args)
-            P.Operator op -> concat $ (convert_ <$> (operatorArgs op))
-            _ -> []
 
 extractFromTables :: [P.Table] -> Either Error ColumnStream 
 extractFromTables tables = 
@@ -107,7 +99,33 @@ extractFromTables tables =
                 return m
                 
 
- 
+extractFromCondition :: P.Where -> ColumnStream 
+extractFromCondition w = extractFromExpr w
+
+extractFromOrdering :: P.OrderBy -> Either Error ColumnStream
+extractFromOrdering _ = Left $ "Order by expressions are currently disallowed"
+
+extractFromAggregation :: P.GroupBy -> ColumnStream 
+extractFromAggregation (P.GroupBy ids mhaving) = 
+    let idstream = map extract ids 
+        havingStream = case mhaving of 
+            Nothing -> []
+            Just (P.Having expr) -> extractFromExpr expr
+    in idstream <> havingStream
+    where 
+        extract :: String -> ColumnInfo
+        extract str = case tableAndColumn str of 
+            Nothing -> (Nothing, str) 
+            Just (src, col) -> (Just src, col)
+
+extractFromExpr :: P.Expr -> ColumnStream
+extractFromExpr expr = case expr of 
+    P.Identifier id -> case tableAndColumn id of 
+        Nothing -> [(Nothing, id)]
+        Just (s, c) -> [(Just s, c)]
+    P.Function _ args -> concat $ (extractFromExpr <$> args)
+    P.Operator op -> concat $ (extractFromExpr <$> (operatorArgs op))
+    _ -> []
 
 -- We want to validate here whether the columns occur at the right time with respect to the 
 -- table streams in the join
