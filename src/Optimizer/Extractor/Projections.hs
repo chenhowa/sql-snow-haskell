@@ -5,6 +5,7 @@ import qualified Parser.Syntax as P
 import qualified Data.List as L
 import Parser.Validator.Expression (operatorArgs)
 import qualified Data.Map.Strict as Map
+import qualified Control.Applicative as A 
 
 type ValidProjectionInfo = Map.Map (TableName, Maybe Alias) [Column]
 type TableName = String
@@ -18,27 +19,30 @@ validate :: T.ValidTableInfo -> Either Error ColumnStream -> Either Error ValidP
 validate info either = case either of 
     Left e -> Left e
     Right cols -> 
-        let map = foldr collect (Right $ Map.empty) cols
-        in  Map.map L.nub map 
+        let eitherMap = foldr (collect info) (Right $ Map.empty) cols
+        in  case eitherMap of 
+                Left _ -> eitherMap 
+                Right map -> Right $ Map.map L.nub map 
 
-    collect :: T.ValidTableInfo -> (Maybe Source, Column) -> Either Error ValidProjectionInfo -> Either Error ValidProjectionInfo
-    collect (tmap, amap) (msource, col) result = case result of 
-        Left _ -> result
-        Right pmap -> case msource of 
-            Nothing -> case Map.size tmap of  -- this should be done with guards, not case
-                        0 -> Left "There are no tables in the query for the column \'" <> col <> "\' to be part of"
-                        1 -> let newResult = case uncons $ Map.toList tmap of 
-                                    Just ((name, _), _) -> Right $ Map.insertWith (<>) (name, Nothing) [col] pmap
-                                    Nothing -> Left "Inconsistent table count"
-                             in  newResult
-                        _ -> Left "There are multiple tables in the query. Column \'" <> col <> "\' must be aliased"
-            Just src -> case Map.lookup src tmap of 
-                Just times -> if times  -- if table has been used more than once, it should have been aliased here
-                              then Left $ "Table \'" <> src "\' occurs more than once in query. Its alias should be used to refer to it"
-                              else Right $ Map.insertWith (<>) (src, Nothing) [col] pmap 
-                Nothing -> case Map.lookup src amap of 
-                    Nothing -> Left $ "\'" <> src <> "\' is not a known table or alias"
-                    Just tname -> Right $ Map.insertWith (<>) (tname, Just src) [col] pmap
+    where 
+        collect :: T.ValidTableInfo -> (Maybe Source, Column) -> Either Error ValidProjectionInfo -> Either Error ValidProjectionInfo
+        collect (tmap, amap) (msource, col) result = case result of 
+            Left _ -> result
+            Right pmap -> case msource of 
+                Nothing -> case Map.size tmap of  -- this should be done with guards, not case
+                            0 -> Left $ "There are no tables in the query for the column \'" <> col <> "\' to be part of"
+                            1 -> let newResult = case L.uncons $ Map.toList tmap of 
+                                        Just ((name, _), _) -> Right $ Map.insertWith (<>) (name, Nothing) [col] pmap
+                                        Nothing -> Left $ "Inconsistent table count"
+                                in  newResult
+                            _ -> Left $ "There are multiple tables in the query. Column \'" <> col <> "\' must be aliased"
+                Just src -> case Map.lookup src tmap of 
+                    Just times -> if times  -- if table has been used more than once, it should have been aliased here
+                                then Left $ "Table \'" <> src <> "\' occurs more than once in query. Its alias should be used to refer to it"
+                                else Right $ Map.insertWith (<>) (src, Nothing) [col] pmap 
+                    Nothing -> case Map.lookup src amap of 
+                        Nothing -> Left $ "\'" <> src <> "\' is not a known table or alias"
+                        Just tname -> Right $ Map.insertWith (<>) (tname, Just src) [col] pmap
 
 type ColumnStream = [(Maybe Source, Column)]
 type Source = String
@@ -62,24 +66,24 @@ extractFromColumns stype = case stype of
             P.Operator op -> concat $ (convert_ <$> (operatorArgs op))
             _ -> []
 
-extractFromTables :: [P.Table] -> ColumnStream 
+extractFromTables :: [P.Table] -> Either Error ColumnStream 
 extractFromTables tables = 
-    concat (convert <$> tables)
+    foldr1 (A.liftA2 (<>)) (convert <$> tables)
     where 
-        convert :: P.Table -> ColumnStream
+        convert :: P.Table -> Either Error ColumnStream
         convert t = case t of 
-            P.Table _ _ -> []
-            P.Join _ t1 t2 oncolumns -> concat [convert t1, convert t2, convert_ oncolumns]
-        convert_ :: (String, String) -> [ColumnStream]
-        convert_ (on1, on2) -> 
+            P.Table _ _ -> Right []
+            P.Join _ t1 t2 oncolumns -> foldr1 (A.liftA2 (<>)) [ convert t1, convert t2, convert_ oncolumns ]
+        convert_ :: (String, String) -> Either Error ColumnStream
+        convert_ (on1, on2) = 
             let s1 = c on1
                 s2 = c on2
-            in  s1 <> s2 
+            in  A.liftA2 (<>) s1 s2
             where 
-                c :: String -> [ColumnStream]
+                c :: String -> Either Error ColumnStream
                 c str = case tableAndColumn str of 
-                    Nothing -> [(Nothing, str)]
-                    Just (src, col) -> [(Just src, col)]
+                    Nothing -> Right [(Nothing, str)]
+                    Just (src, col) -> Right [(Just src, col)]
 
 -- We want to validate here whether the columns occur at the right time with respect to the 
 -- table streams in the join
