@@ -6,7 +6,9 @@ import qualified Data.List as L
 import Parser.Validator.Expression (operatorArgs)
 import qualified Data.Map.Strict as Map
 
-type ValidProjectionInfo = Map.Map Source [Column]
+type ValidProjectionInfo = Map.Map (TableName, Maybe Alias) [Column]
+type TableName = String
+type Alias = String
 type Error = String
 
 
@@ -15,7 +17,9 @@ type Error = String
 validate :: T.ValidTableInfo -> Either Error ColumnStream -> Either Error ValidProjectionInfo
 validate info either = case either of 
     Left e -> Left e
-    Right cols -> foldr collect (Right $ Map.empty) cols
+    Right cols -> 
+        let map = foldr collect (Right $ Map.empty) cols
+        in  Map.map L.nub map 
 
     collect :: T.ValidTableInfo -> (Maybe Source, Column) -> Either Error ValidProjectionInfo -> Either Error ValidProjectionInfo
     collect (tmap, amap) (msource, col) result = case result of 
@@ -24,23 +28,24 @@ validate info either = case either of
             Nothing -> case Map.size tmap of  -- this should be done with guards, not case
                         0 -> Left "There are no tables in the query for the column \'" <> col <> "\' to be part of"
                         1 -> let newResult = case uncons $ Map.toList tmap of 
-                                    Just ((name, _), _) -> Right $ Map.insertWith (<>) name [col]
+                                    Just ((name, _), _) -> Right $ Map.insertWith (<>) (name, Nothing) [col] pmap
                                     Nothing -> Left "Inconsistent table count"
                              in  newResult
                         _ -> Left "There are multiple tables in the query. Column \'" <> col <> "\' must be aliased"
             Just src -> case Map.lookup src tmap of 
-                Just times -> if times  -- if table has been used more than once, it should have been aliased
+                Just times -> if times  -- if table has been used more than once, it should have been aliased here
                               then Left $ "Table \'" <> src "\' occurs more than once in query. Its alias should be used to refer to it"
-                              else Right $ Map.insertWith (<>) name [col]
-                Nothing -- Then we need to look this up by alias, not table name
-
+                              else Right $ Map.insertWith (<>) (src, Nothing) [col] pmap 
+                Nothing -> case Map.lookup src amap of 
+                    Nothing -> Left $ "\'" <> src <> "\' is not a known table or alias"
+                    Just tname -> Right $ Map.insertWith (<>) (tname, Just src) [col] pmap
 
 type ColumnStream = [(Maybe Source, Column)]
 type Source = String
 type Column = String
 
-extractColumns :: P.SelectType -> Either Error ColumnStream 
-extractColumns stype = case stype of 
+extractFromColumns :: P.SelectType -> Either Error ColumnStream 
+extractFromColumns stype = case stype of 
     P.Wildcard -> Left $ "Selecting all output columns with \'*\' is currently not allowed"     
     P.Columns cols -> Right (concat (convert <$> cols))
 
@@ -57,6 +62,27 @@ extractColumns stype = case stype of
             P.Operator op -> concat $ (convert_ <$> (operatorArgs op))
             _ -> []
 
+extractFromTables :: [P.Table] -> ColumnStream 
+extractFromTables tables = 
+    concat (convert <$> tables)
+    where 
+        convert :: P.Table -> ColumnStream
+        convert t = case t of 
+            P.Table _ _ -> []
+            P.Join _ t1 t2 oncolumns -> concat [convert t1, convert t2, convert_ oncolumns]
+        convert_ :: (String, String) -> [ColumnStream]
+        convert_ (on1, on2) -> 
+            let s1 = c on1
+                s2 = c on2
+            in  s1 <> s2 
+            where 
+                c :: String -> [ColumnStream]
+                c str = case tableAndColumn str of 
+                    Nothing -> [(Nothing, str)]
+                    Just (src, col) -> [(Just src, col)]
+
+-- We want to validate here whether the columns occur at the right time with respect to the 
+-- table streams in the join
 
 
 tableAndColumn :: String -> Maybe (Source, Column)

@@ -15,7 +15,8 @@ import qualified Data.List as L
 
     Desired knowledge
 
-2. If a single table occurs twice, it must be aliased (otherwise we have ambiguity)
+1. If a single table occurs twice. In that case, we can see whether ambiguous table references occur 
+    elsewhere in the query
 -}
 
 type ValidTableInfo = ( TableMap, AliasMap )
