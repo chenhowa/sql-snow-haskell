@@ -143,7 +143,7 @@ extract tables =
         extractTable t stream = case t of 
             P.Table id malias -> [(id, malias)] : stream
             P.Join _ t1 t2 _ -> ((extractJoin t1) <> (extractJoin t2)) : stream
-        extractJoin :: P.Table -> Table
-        extractJoin j = case j of 
-            P.Table id malias -> [(id, malias)]
-            P.Join _ t1 t2 _ -> extractJoin t1 <> extractJoin t2
+extractJoin :: P.Table -> Table
+extractJoin j = case j of 
+    P.Table id malias -> [(id, malias)]
+    P.Join _ t1 t2 _ -> extractJoin t1 <> extractJoin t2

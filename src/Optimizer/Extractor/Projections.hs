@@ -44,7 +44,8 @@ validate info either = case either of
                         Nothing -> Left $ "\'" <> src <> "\' is not a known table or alias"
                         Just tname -> Right $ Map.insertWith (<>) (tname, Just src) [col] pmap
 
-type ColumnStream = [(Maybe Source, Column)]
+type ColumnStream = [ColumnInfo]
+type ColumnInfo = (Maybe Source, Column)
 type Source = String
 type Column = String
 
@@ -68,25 +69,60 @@ extractFromColumns stype = case stype of
 
 extractFromTables :: [P.Table] -> Either Error ColumnStream 
 extractFromTables tables = 
-    foldr1 (A.liftA2 (<>)) (convert <$> tables)
+    let cs = foldr1 (A.liftA2 (<>)) (convert <$> tables)
+    in  cs
     where 
         convert :: P.Table -> Either Error ColumnStream
-        convert t = case t of 
-            P.Table _ _ -> Right []
-            P.Join _ t1 t2 oncolumns -> foldr1 (A.liftA2 (<>)) [ convert t1, convert t2, convert_ oncolumns ]
-        convert_ :: (String, String) -> Either Error ColumnStream
+        convert t = 
+            case t of 
+                    P.Table _ _ -> Right []
+                    P.Join _ t1 t2 oncolumns -> do 
+                        _ <- validateJoin Map.empty t
+                        colstream <- foldr1 (A.liftA2 (<>)) [ convert t1, convert t2, Right $ convert_ oncolumns ]
+                        return colstream
+
+        convert_ :: (String, String) -> ColumnStream
         convert_ (on1, on2) = 
             let s1 = c on1
                 s2 = c on2
-            in  A.liftA2 (<>) s1 s2
+            in  s1 <> s2
             where 
-                c :: String -> Either Error ColumnStream
+                c :: String -> ColumnStream
                 c str = case tableAndColumn str of 
-                    Nothing -> Right [(Nothing, str)]
-                    Just (src, col) -> Right [(Just src, col)]
+                    Nothing -> [(Nothing, str)]
+                    Just (src, col) -> [(Just src, col)]
+
+        validateJoin :: Map.Map String Bool -> P.Table -> Either Error (Map.Map String Bool)
+        validateJoin map t = case t of 
+            P.Table id malias -> Right $ Map.insert id False $ case malias of 
+                Nothing -> map
+                Just alias -> Map.insert alias False map
+            P.Join _ t1 t2 (on1, on2) -> do 
+                m <- A.liftA2 Map.union (validateJoin Map.empty t1) (validateJoin Map.empty t2)
+                _ <- case tableAndColumn on1 of 
+                    Nothing -> Left $ "In join, column \'" <> on1 <> "\' should have an alias to disambiguate it"
+                    Just (src, col) -> case Map.lookup src m of 
+                        Nothing -> Left $ "In join, alias \'" <> src <> "\' is used before being defined"
+                        Just _ -> Right m
+                return m
+                
+
+ 
 
 -- We want to validate here whether the columns occur at the right time with respect to the 
 -- table streams in the join
+
+pair :: [a] -> [(a, a)]
+pair [] = []
+pair stuff = 
+    let mp = do 
+            (first, rest) <- L.uncons (take 2 stuff)
+            (second, _) <- L.uncons rest
+            return (first, second)
+        morestuff = pair (drop 2 stuff)
+    in  case mp of
+            Nothing -> morestuff
+            Just p -> p : morestuff
 
 
 tableAndColumn :: String -> Maybe (Source, Column)
