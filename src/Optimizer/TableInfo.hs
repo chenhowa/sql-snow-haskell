@@ -11,7 +11,6 @@ data TableInfo =
     Table
         { table :: Table
         , alias :: Alias
-        , selection :: P.Expr
         , projection :: [ Column ]
         }
     deriving (Eq, Show)
@@ -43,7 +42,6 @@ extractInfoFromQuery q = case q of
             convert :: ((Proj.TableName, Maybe Proj.Alias), [Proj.Column]) -> TableInfo
             convert ((tname, mal), cols) = Table
                 { table = tname
-                , selection = P.Identifier "yo"
                 , projection = cols
                 , alias = case mal of 
                         Nothing -> ""
