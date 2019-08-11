@@ -29,25 +29,53 @@ validate info either = case either of
         collect (tmap, amap) (msource, col) result = case result of 
             Left _ -> result
             Right pmap -> case msource of 
-                Nothing -> case Map.size tmap of  -- this should be done with guards, not case
-                            0 -> Left $ "There are no tables in the query for the column \'" <> col <> "\' to be part of"
-                            1 -> let newResult = case L.uncons $ Map.toList tmap of 
-                                        Just ((name, _), _) -> Right $ Map.insertWith (<>) (name, Nothing) [col] pmap
-                                        Nothing -> Left $ "Inconsistent table count"
-                                in  newResult
-                            _ -> Left $ "There are multiple tables in the query. Column \'" <> col <> "\' must be aliased"
-                Just src -> case Map.lookup src tmap of 
-                    Just times -> if times  -- if table has been used more than once, it should have been aliased here
-                                then Left $ "Table \'" <> src <> "\' occurs more than once in query. Its alias should be used to refer to it"
-                                else Right $ Map.insertWith (<>) (src, Nothing) [col] pmap 
-                    Nothing -> case Map.lookup src amap of 
-                        Nothing -> Left $ "\'" <> src <> "\' is not a known table or alias"
-                        Just tname -> Right $ Map.insertWith (<>) (tname, Just src) [col] pmap
+                Nothing -> 
+                    let size = Map.size tmap 
+                    in  case () of 
+                          _ | size == 0 -> Left $ "There are no tables in the query for the column \'" <> col <> "\' to be part of"
+                            | size == 1 -> let newResult = case L.uncons $ Map.toList tmap of 
+                                                    Just ((name, _), _) -> Right $ Map.insertWith (<>) (name, Nothing) [col] pmap
+                                                    Nothing -> Left $ "Inconsistent table count"
+                                           in  newResult
+                            | otherwise -> Left $ "There are multiple tables in the query. Column \'" <> col <> "\' must be aliased"
+                Just src -> 
+                    case Map.lookup src tmap of 
+                        Just times -> if times  -- if table has been used more than once, it should have been aliased here
+                                    then Left $ "Table \'" <> src <> "\' occurs more than once in query. Its alias should be used to refer to it"
+                                    else  -- if table has been used only once, we can use the tablename to refer to it. It may or may not have an alias
+                                        let aliasesForTable = Map.toList $ Map.filter ((==) src) amap
+                                        in  case L.uncons aliasesForTable of 
+                                                Nothing -> Right $ Map.insertWith (<>) (src, Nothing) [col] pmap 
+                                                Just ((alias, _), _) -> Right $ Map.insertWith (<>) (src, Just alias) [col] pmap
+                        Nothing -> case Map.lookup src amap of 
+                            Nothing -> Left $ "\'" <> src <> "\' is not a known table or alias"
+                            Just tname -> Right $ Map.insertWith (<>) (tname, Just src) [col] pmap
 
 type ColumnStream = [ColumnInfo]
 type ColumnInfo = (Maybe Source, Column)
 type Source = String
 type Column = String
+
+extractFromQuery :: P.Query -> Either Error ColumnStream 
+extractFromQuery q = case q of 
+    P.Select stype mfrom uniq -> do 
+        outputCols <- extractFromColumns stype
+        fromCols <- case mfrom of 
+            Nothing -> Right []
+            Just (P.FromClause {P.tables = ts, P.where_ = mw, P.groupBy = mgb, P.orderBy = mob}) -> do 
+                joinCols <- extractFromTables ts
+                whereCols <- case mw of 
+                    Nothing -> Right []
+                    Just w -> Right $ extractFromCondition w
+                gbCols <- case mgb of 
+                    Nothing -> Right [] 
+                    Just gb -> Right $ extractFromAggregation gb
+                obCols <- case mob of 
+                    Nothing -> Right []
+                    Just ob -> extractFromOrdering ob
+                return $ concat [joinCols, whereCols, gbCols, obCols]
+        return $ concat [outputCols, fromCols]
+    _ -> Left $ "Not a select query. Cannot extract columns"
 
 extractFromColumns :: P.SelectType -> Either Error ColumnStream 
 extractFromColumns stype = case stype of 

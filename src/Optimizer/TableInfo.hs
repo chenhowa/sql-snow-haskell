@@ -4,7 +4,8 @@ import qualified Parser.Syntax as P
 import qualified Data.Map.Strict as Map
 import Parser.Validator.Expression (operatorArgs)
 import qualified Data.List as L
-
+import qualified Optimizer.Extractor.Tables as Table
+import qualified Optimizer.Extractor.Projections as Proj
 
 data TableInfo = 
     Table
@@ -18,118 +19,36 @@ data TableInfo =
 type Table = String
 type Alias = String
 type Column = String
+type Error = String
 
 -- !! This doesn't support cross product joins!!
 -- !! This still needs work to get the selection expression for this particular table, if available.
 
-extractQueryInfo :: P.Query -> [ TableInfo ]
-extractQueryInfo query = case query of 
+extractInfoFromQuery :: P.Query -> Either Error [TableInfo]
+extractInfoFromQuery q = case q of 
     P.Select stype mfrom uniq -> case mfrom of 
-        Nothing -> []
-        Just from -> 
-            let finfo :: [TableInfo]
-                finfo = extractFromInfo from
+        Nothing -> Right []
+        Just (P.FromClause { P.tables = ts }) -> do 
+            tinfo@(tmap, amap) <- Table.validate . Table.extract $ ts
+            projections <- (Proj.validate tinfo) . Proj.extractFromQuery $ q
+            return $ createTableInfo projections
+    _ -> Left $ "Query is not a select statement"
 
-                outputCols :: ColumnInfo
-                outputCols = extractOutputColumns stype
-
-            in  removeDuplicates ((combine outputCols) <$> finfo)
-    _ -> []
-    where 
-        combine :: ColumnInfo -> TableInfo -> TableInfo
-        combine (m, o) tinfo@(Table {table = t, alias = a, projection = p}) =
-            let aliasCols = case Map.lookup a m of 
-                        Nothing -> []
-                        Just cols -> cols
-                tableCols = if t /= a
-                            then case Map.lookup t m of 
-                                    Nothing -> []
-                                    Just cols -> cols
-                            else [] 
-            in  tinfo 
-                    { projection = p <> aliasCols <> tableCols <> o
-                    }
-                    
-        removeDuplicates :: [TableInfo] -> [TableInfo]
-        removeDuplicates infos = removeDup <$> infos
-
-        removeDup :: TableInfo -> TableInfo 
-        removeDup info@(Table {projection = ps}) = info { projection = L.nub ps }
-
-
-extractFromInfo :: P.FromClause -> [ TableInfo ]
-extractFromInfo from = case from of 
-    P.FromClause {P.tables=t, P.where_=w, P.groupBy = gb, P.orderBy = ob} ->
-        let tables :: [(Table, Alias)]
-            tables = extractTables t 
-
-            wColumns :: ColumnInfo
-            wColumns = extractColumnsFromWhere w
-
-            gColumns :: ColumnInfo
-            gColumns = extractColumnsFromGroupBy gb
-
-            obColumns :: ColumnInfo
-            obColumns = extractColumnsFromOrderBy ob
-
-            combinedColumnInfo :: ColumnInfo
-            combinedColumnInfo = foldr1 combineColumnInfo [wColumns, gColumns, obColumns]
-        in  (mkTableInfo combinedColumnInfo) <$> tables 
-
+    where
+    createTableInfo :: Proj.ValidProjectionInfo -> [TableInfo]
+    createTableInfo pmap = 
+        let projections = Map.toList pmap
+        in  (convert <$> projections)
         where 
-            mkTableInfo :: ColumnInfo -> (Table, Alias) -> TableInfo
-            mkTableInfo info pair = Table
-                { table = fst pair
-                , alias = snd pair
-                , selection = P.Identifier "hi"
-                , projection = getProjection info pair
+            convert :: ((Proj.TableName, Maybe Proj.Alias), [Proj.Column]) -> TableInfo
+            convert ((tname, mal), cols) = Table
+                { table = tname
+                , selection = P.Identifier "yo"
+                , projection = cols
+                , alias = case mal of 
+                        Nothing -> ""
+                        Just al -> al
                 }
-getProjection :: ColumnInfo -> (Table, Alias) -> [Column]
-getProjection (m, o) (t, a) = 
-    if Map.null m 
-    then o 
-    else concat 
-        [ case Map.lookup t m of 
-            Nothing -> []
-            Just cols -> cols 
-        , if a /= t
-          then case  Map.lookup a m of 
-                    Nothing -> []
-                    Just cols -> cols  
-          else []
-        , o
-        ]
-
-                
-extractTables :: [P.Table] -> [(Table, Alias)]
-extractTables tables = concat (extractTable <$> tables)
-    where 
-        extractTable :: P.Table -> [(Table, Alias)]
-        extractTable table = case table of 
-                P.Table str malias -> 
-                    [ (,) str $ case malias of 
-                                Nothing -> str
-                                Just alias -> alias
-                    ]
-                P.Join _ t1 t2 _ -> concat [ extractTable t1, extractTable t2 ]
-
-
-type ColumnInfo = (Map.Map Table [Column], [Column])
-
-extractColumnsFromWhere :: Maybe P.Where -> ColumnInfo
-extractColumnsFromWhere w = case w of 
-    Nothing -> (Map.empty, [])
-    Just wh -> extractColumnsFromExpr wh
-
-extractColumnsFromExpr :: P.Expr -> ColumnInfo
-extractColumnsFromExpr wh = case wh of 
-    P.Identifier id -> case tableAndColumn id of 
-        Nothing -> (Map.empty, [id])
-        Just (name, col) -> (Map.fromList [(name, [col])], [])
-    P.Function _ args -> foldr1 combineColumnInfo (extractColumnsFromExpr <$> args)
-    P.Operator op -> 
-        foldr1 combineColumnInfo (extractColumnsFromExpr <$> (operatorArgs op))
-    _ -> (Map.empty, [])
 
 tableAndColumn :: String -> Maybe (Table, Column)
 tableAndColumn str = case L.elemIndex '.' str of 
@@ -137,53 +56,3 @@ tableAndColumn str = case L.elemIndex '.' str of
     Just i -> 
         let split = splitAt i str 
         in Just (fst split, drop 1 $ snd split)
-
-combineColumnInfo :: ColumnInfo -> ColumnInfo -> ColumnInfo 
-combineColumnInfo c1 c2 =
-    let orphans = concat $ (snd <$> [c1, c2])
-        named = Map.unionWith (<>) (fst c1) (fst c2)
-    in  (named, orphans)
-
-
-extractColumnsFromGroupBy :: Maybe P.GroupBy -> ColumnInfo
-extractColumnsFromGroupBy mgb = case mgb of 
-    Nothing -> (Map.empty, [])
-    Just gb -> extractColumns gb 
-
-    where 
-        extractColumns :: P.GroupBy -> ColumnInfo
-        extractColumns (P.GroupBy ids having) = 
-            let havingInfo = extractColumnsFromHaving having
-                idInfo = foldr1 combineColumnInfo $ (intoColumnInfo <$> ids)
-            in  combineColumnInfo idInfo havingInfo
-            where
-                intoColumnInfo :: String -> ColumnInfo
-                intoColumnInfo str = case tableAndColumn str of 
-                    Nothing -> (Map.empty, [str])
-                    Just (t, c) -> (Map.fromList [(t, [c])], [])
-        extractColumnsFromHaving :: Maybe P.Having -> ColumnInfo 
-        extractColumnsFromHaving mhaving = case mhaving of 
-            Nothing -> (Map.empty, [])
-            Just (P.Having e) -> extractColumnsFromExpr e
-
-extractColumnsFromOrderBy :: Maybe P.OrderBy -> ColumnInfo
-extractColumnsFromOrderBy mob = case mob of 
-    Nothing -> (Map.empty, [])
-    Just ob -> extractColumns ob 
-    where 
-        extractColumns :: P.OrderBy -> ColumnInfo
-        extractColumns (P.OrderBy cols _) = foldr1 combineColumnInfo (extract <$> cols)
-
-        extract :: String -> ColumnInfo 
-        extract str = case tableAndColumn str of 
-            Nothing -> (Map.empty, [str])
-            Just (t, c) -> (Map.fromList [(t, [c])], [])
-                
-extractOutputColumns :: P.SelectType -> ColumnInfo
-extractOutputColumns stype = case stype of 
-    P.Wildcard -> (Map.empty, [])
-    P.Columns cols -> foldr1 combineColumnInfo (extractOutputColumn <$> cols)
-    where 
-        extractOutputColumn :: P.Column -> ColumnInfo
-        extractOutputColumn (P.Column colexpr _) = extractColumnsFromExpr colexpr 
-

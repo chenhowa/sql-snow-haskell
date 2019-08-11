@@ -9,6 +9,60 @@ import qualified Data.Either as E
 
 spec :: Spec
 spec = do 
+    describe "extract from query" $ do 
+        it "all clauses of SELECT query" $ do 
+            let q = P.Select columns from P.All 
+                columns = P.Columns 
+                    [ P.Column (P.Identifier "apple") Nothing 
+                    , P.Column (P.Identifier "tree.orange") Nothing
+                    , P.Column (P.Operator $ P.Plus (P.Identifier "tree.count") (P.Identifier "age")) Nothing
+                    ]
+                from = Just $ P.FromClause 
+                    { P.tables = tables
+                    , P.where_ = where_
+                    , P.groupBy = groupBy
+                    , P.orderBy = orderBy
+                    , P.limit = Nothing
+                    }
+                tables = 
+                    [ P.Table "sc_task" Nothing
+                    , P.Join P.Inner 
+                        ( P.Join P.Inner 
+                            (P.Table "incident" Nothing)
+                            (P.Table "problem" Nothing)
+                            ("problem.state", "incident.state")
+                        )
+                        (P.Table "change" Nothing)
+                        ("change.state", "problem.state")
+                    , P.Table "request" Nothing
+                    ]
+                where_ = Just $ P.Function "avg"
+                        [ P.Operator $ P.Plus 
+                            (P.Identifier "hi")
+                            (P.Operator $ P.Minus (P.Identifier "P.yo") (P.Identifier "lo"))
+                        ]
+                groupBy = Just $ P.GroupBy 
+                    ["apple", "tree.orange"] mhaving
+                mhaving = Just . P.Having $ P.Identifier "what"
+                orderBy = Nothing
+                expected = Right $ 
+                    [ (Nothing, "apple")
+                    , (Just "tree", "orange")
+                    , (Just "tree", "count")
+                    , (Nothing, "age")
+                    , (Just "problem", "state")
+                    , (Just "incident", "state")
+                    , (Just "change", "state")
+                    , (Just "problem", "state")
+                    , (Nothing, "hi")
+                    , (Just "P", "yo")
+                    , (Nothing, "lo")
+                    , (Nothing, "apple")
+                    , (Just "tree", "orange")
+                    , (Nothing, "what")
+                    ]
+            extractFromQuery q `shouldBe` expected
+
     describe "extract from columns" $ do 
         it "wildcard" $ do 
             let cols = P.Wildcard
@@ -175,7 +229,7 @@ spec = do
             let tmap = Map.fromList 
                     [ ("tree", True)
                     , ("bush", False)
-                    , ("shrub", True)
+                    , ("shrub", False)
                     ]
                 amap = Map.fromList 
                     [ ("T", "tree")
@@ -186,8 +240,17 @@ spec = do
                 let stream = Right $ 
                         [ (Just "T", "orange")
                         , (Just "bush", "strawberry")
+                        , (Just "T", "apple")
+                        , (Just "B", "blueberry")
+                        , (Just "shrub", "flower")
                         ]
-                validate info stream `shouldSatisfy` E.isRight
+                    result = validate info stream
+                    expected = Right $ Map.fromList
+                        [ (("tree", Just "T"), ["orange", "apple"])
+                        , (("bush", Just "B"), ["strawberry", "blueberry"])
+                        , (("shrub", Nothing), ["flower"])
+                        ]
+                result `shouldBe` expected
 
         
 
