@@ -70,15 +70,21 @@ extract wh =
                         (map2, _, _) <- extract_ either op2
                         let newMap = Map.union map1 map2
                         -- return the new map, tell above expressions to abort, and save the Or expression only without any subexpressions
-                        return (newMap, True, [SelectionInfo { tables = fmap ((flip (,)) Nothing) $ Map.keys newMap, expr = ex}]) 
+                        return (newMap, True, 
+                                    [SelectionInfo 
+                                        { tables = fmap ((flip (,)) Nothing) $ Map.keys newMap, expr = ex}
+                                    ]) 
                     P.And op1 op2 -> do -- And expressions do not generate their own expressions, since the selections on lower tables automatically perform them
                         (map1, a1, s1) <- extract_ either op1
                         (map2, a2, s2) <- extract_ either op2
                         let newMap = Map.union map1 map2
                             newAbort = a1 || a2
                         if newAbort
-                        then return (newMap, True)
-                        return (newMap, False, [])
+                        then return (newMap, True, 
+                                        [SelectionInfo 
+                                            { tables = fmap ((flip (,)) Nothing) $ Map.keys newMap, expr = ex}
+                                        ])
+                        else return (newMap, False, s1 <> s2)
                     P.Equals op1 op2 -> comparison ex op1 op2 either
                     P.NotEquals op1 op2 -> comparison ex op1 op2 either
                     P.LT op1 op2 -> comparison ex op1 op2 either
