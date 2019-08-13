@@ -29,40 +29,63 @@ type Alias = String
 type Error = String
 
 type TablesUsed = Map.Map Name Bool
+type Abort = Bool
 
 -- extract goes down into a where statement and generates a list of all selections that need to be done
 -- on the tables, where we try to push all selections as far down as possible
 extract :: P.Where -> Either Error SelectionStream
 extract wh = 
-    let m = extract_ (Right Map.empty) wh
-    in  Right []
+    let m = extract_ (Right $ (Map.empty, False, [])) wh
+    in  case m of 
+            Left str -> Left str
+            Right (_, _, stream) -> Right stream
 
     where 
-        extract_ :: Either Error TablesUsed -> P.Where -> Either Error TablesUsed
-        extract_ emap w = do 
-            map <- emap 
-            case w of 
-                P.Constant _ -> Right $ map -- Finding a constant doesn't alter the map of tables that have been seen at all
-                P.Identifier str -> Right $ Map.insert str False map -- finding an identifier, we tell the caller that we've found another table
+        extract_ :: Either Error (TablesUsed, Abort, SelectionStream) -> P.Expr -> Either Error (TablesUsed, Abort, SelectionStream)
+        extract_ either@(Left _) _ = either
+        extract_ either@(Right (map, abort, stream)) ex = do 
+            case ex of 
+                P.Constant _ -> -- a constant doesn't change the tables, doesn't provoke abort, and it doesn't provide any selections
+                    Right $ (map, False, [])
+                P.Identifier str -> -- an identifier adds a table, doesn't provoke abort, and doesn't provide selections
+                    Right $ (Map.insert str False map, False, [])
                 P.Function id args -> case functionLookup id of 
                     Nothing -> Left $ "Function \'" <> id <> "\' not recognized"
                     Just (FunctionInfo {returnType = rt}) ->  Left $ "stil need to implement" -- if it's a boolean, I suppose it qualifies as a selection we could do
                 P.Operator optype -> case optype of 
-                    P.Or op1 op2 -> 
-                    P.And op1 op2 -> 
-                    P.Equals op1 op2 -> do 
-                        tables1 <- extract_ op1
-                        tables2 <- extract_ op2
-                        if (Map.size $ Map.union tables1 tables2) == 1 -- if there is only one table used, we can move the selection down to the table used
-                        then 
-                        else 
-                    P.NotEquals op1 op2 -> 
-                    P.LT op1 op2 -> 
-                    P.LTE op1 op2 -> 
-                    P.GT op1 op2 -> 
-                    P.GTE op1 op2 -> 
+                    P.Or op1 op2 -> do 
+                        (map1, _, _) <- extract_ either op1 
+                        (map2, _, _) <- extract_ either op2
+                        let newMap = Map.union map1 map2
+                        -- return the new map, tell above expressions to abort, and save the Or expression only without any subexpressions
+                        return (newMap, True, [SelectionInfo { tables = fmap ((flip (,)) Nothing) $ Map.keys newMap, expr = ex}]) 
+                    P.And op1 op2 -> do
+                        (map1, _, _) <- extract_ either op1
+                        (map2, _, _) <- extract_ either op2
+                        let newMap = Map.union map1 map2
+                        return (newMap, False, [])
+                    P.Equals op1 op2 -> comparison ex op1 op2 either
+                    P.NotEquals op1 op2 -> comparison ex op1 op2 either
+                    P.LT op1 op2 -> comparison ex op1 op2 either
+                    P.LTE op1 op2 -> comparison ex op1 op2 either
+                    P.GT op1 op2 -> comparison ex op1 op2 either
+                    P.GTE op1 op2 -> comparison ex op1 op2 either
                     _ -> Left $ "Current operator not supported"
                 _ -> Left $ "Current expression not supported"
+        comparison :: P.Expr -> P.Expr -> P.Expr -> Either Error (TablesUsed, Abort, SelectionStream) -> Either Error (TablesUsed, Abort, SelectionStream)
+        comparison _ _ _ either@(Left _) = either
+        comparison comp op1 op2 opts@(Right (emap, abort, stream)) = do 
+            (map1, _, str1) <- extract_ (opts) op1
+            (map2, _, str2) <- extract_ (opts) op2
+            let newMap = Map.union map1 map2
+            if (Map.size $ newMap) == 1 -- if the tables below only had 1 table total, we can take the entire the selection down to the table used
+            then 
+                let newStream = [SelectionInfo { tables = fmap ((flip (,)) Nothing) $ Map.keys newMap, expr = comp }]
+                in  return (newMap, abort, newStream)
+            else  -- but if there are multiple tables, then this equality comparison needs to be appended to the other selections from lower down
+                let newStream = (SelectionInfo { tables = fmap ((flip (,)) Nothing) $ Map.keys newMap, expr = comp }):(str1 <> str2)
+                in  return (newMap, abort, newStream)
+
 
 
 data FunctionType
