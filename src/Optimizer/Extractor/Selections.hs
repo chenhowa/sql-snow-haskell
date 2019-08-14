@@ -6,6 +6,8 @@ import Parser.Validator.Expression (operatorArgs)
 import qualified Data.List as L
 import qualified Data.Char as Char
 import Optimizer.Extractor.Projections (tableAndColumn)
+import qualified Optimizer.Extractor.Tables as T
+import Control.Applicative as A
 
 {- As far as I can tell, the granularity of selections can be at any level ranging from one table, to all tables in the query.
 Consequently, it initially doesn't make sense to pair selections directly with table info. It *does* make sense to project 
@@ -43,8 +45,8 @@ type Abort = Bool
 
 -- extract goes down into a where statement and generates a list of all selections that need to be done
 -- on the tables, where we try to push all selections as far down as possible
-extract :: P.Where -> Either Error SelectionStream
-extract wh = 
+extract :: T.ValidTableInfo -> P.Where -> Either Error SelectionStream
+extract (tmap, amap) wh = 
     let m = extract_ (Right $ (Map.empty, False, [])) wh
     in  case m of 
             Left str -> Left str
@@ -59,7 +61,15 @@ extract wh =
                     Right $ (map, False, [])
                 P.Identifier str -> 
                     case tableAndColumn str of 
-                        Nothing -> Left $ "Support for column with no table/alias is not yet implemented"
+                        Nothing -> 
+                            if Map.size tmap == 1
+                            then case L.uncons $ Map.toList tmap of 
+                                Nothing -> Left $ "Unexpectedly, no tables"
+                                Just ((name, multtimes), _) -> 
+                                    if multtimes 
+                                    then Left $ "In WHERE clause, column \'" <> str <> "\' is used ambiguously without a table or alias"
+                                    else Right $ (Map.insert name False map, False, [])
+                            else Left $ "In WHERE clause, column \'" <> str <> "\' is used ambiguously without a table or alias"
                         Just (src, col) -> Right $ (Map.insert src False map, False, []) -- an identifier adds a table, doesn't provoke abort, and doesn't provide selections
                 P.Function id args -> case functionLookup id of 
                     Nothing -> Left $ "Function \'" <> id <> "\' not recognized"
@@ -98,18 +108,36 @@ extract wh =
         comparison comp op1 op2 opts@(Right (emap, abort, stream)) = do 
             (map1, a1, str1) <- extract_ (opts) op1
             (map2, a2, str2) <- extract_ (opts) op2
-            let newMap = Map.union map1 map2
+            let newMap = Map.union (map1) (map2)
                 newAbort = a1 || a2
-            if newAbort 
-            then return (newMap, True, [SelectionInfo {tables = fmap ((flip (,)) Nothing) $ Map.keys newMap, expr = comp }])
-            else 
-                if (Map.size $ newMap) == 1 -- if the tables below only had 1 table total, we can take the entire the selection down to the table used
-                then 
-                    let newStream = [SelectionInfo { tables = fmap ((flip (,)) Nothing) $ Map.keys newMap, expr = comp }]
-                    in  return (newMap, abort, newStream)
-                else  -- but if there are multiple tables, then this equality comparison needs to be appended to the other selections from lower down
-                    let newStream = (SelectionInfo { tables = fmap ((flip (,)) Nothing) $ Map.keys newMap, expr = comp }):(str1 <> str2)
-                    in  return (newMap, abort, newStream)
+                etables = sequence $ fmap genTablesUsed $ Map.keys newMap
+            case etables of 
+                Left e -> Left e
+                Right ts -> 
+                    if newAbort 
+                    then return (newMap, True, 
+                            [ SelectionInfo 
+                                { tables = ts
+                                , expr = comp 
+                                }
+                            ])
+                    else 
+                        if (Map.size $ newMap) == 1 -- if the tables below only had 1 table total, we can take the entire the selection down to the table used
+                        then 
+                            let newStream = [SelectionInfo { tables = ts, expr = comp }]
+                            in  return (newMap, abort, newStream)
+                        else  -- but if there are multiple tables, then this equality comparison needs to be appended to the other selections from lower down
+                            let newStream = (SelectionInfo { tables = ts, expr = comp }):(str1 <> str2)
+                            in  return (newMap, abort, newStream)
+        genTablesUsed :: Name -> Either Error Table
+        genTablesUsed name = case Map.lookup name tmap of 
+            Just multtimes ->
+                if multtimes
+                then Left $ "Table name \'" <> name <> "\' has been used multiple times and cannot be used to disambiguate"
+                else Right (name, Nothing)
+            Nothing -> case Map.lookup name amap of 
+                Nothing -> Left $ "Table/alias \'" <> name <> "\' was used before being defined"
+                Just table -> Right (table, Just name)
 
 
 
